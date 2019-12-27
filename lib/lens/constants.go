@@ -14,21 +14,23 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package cli
+package lens
 
-import "gopkg.in/alecthomas/kingpin.v2"
+import (
+	"fmt"
 
-type Application struct {
-	*kingpin.Application
-	Debug    *bool
-	StartCmd StartCmd
-}
+	"github.com/gravitational/gravity/lib/constants"
+)
 
-type StartCmd struct {
-	*kingpin.CmdClause
-	ListenAddress   *string
-	KubeConfig      *string
-	CertificatePath *string
-	KeyPath         *string
-	DefaultRegistry *string
-}
+const (
+	// DefaultListenAddress is the default admission server listen address.
+	DefaultListenAddress = "0.0.0.0"
+	// DefaultListenPort is the default admission server listen port.
+	DefaultListenPort = "5367"
+)
+
+var (
+	// DefaultRegistry is the default registry address images get redirected to.
+	DefaultRegistry = fmt.Sprintf("%v:%v", constants.RegistryDomainName,
+		constants.DockerRegistryPort)
+)

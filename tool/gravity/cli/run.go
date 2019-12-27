@@ -713,6 +713,13 @@ func Execute(g *Application, cmd string, extraArgs []string) (err error) {
 		return exportCertificateAuthority(localEnv,
 			*g.SystemExportCACmd.ClusterName,
 			*g.SystemExportCACmd.CAPath)
+	case g.SystemSignCmd.FullCommand():
+		return signCertificate(
+			*g.SystemSignCmd.CACertPath,
+			*g.SystemSignCmd.CAKeyPath,
+			*g.SystemSignCmd.Hosts,
+			*g.SystemSignCmd.OutCert,
+			*g.SystemSignCmd.OutKey)
 	case g.SystemReinstallCmd.FullCommand():
 		return systemReinstall(localEnv,
 			*g.SystemReinstallCmd.Package,

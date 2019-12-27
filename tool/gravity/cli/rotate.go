@@ -206,3 +206,42 @@ var certNames = []string{
 	constants.SchedulerKeyPair,
 	constants.KubectlKeyPair,
 }
+
+func signCertificate(caCertPath, caKeyPath string, hosts []string, outCert, outKey string) error {
+	certPEM, err := ioutil.ReadFile(caCertPath)
+	if err != nil {
+		return trace.Wrap(err)
+	}
+	keyPEM, err := ioutil.ReadFile(caKeyPath)
+	if err != nil {
+		return trace.Wrap(err)
+	}
+	caKeyPair := &authority.TLSKeyPair{
+		CertPEM: certPEM,
+		KeyPEM:  keyPEM,
+	}
+	csrRequest := csr.CertificateRequest{
+		Hosts: hosts,
+	}
+	keyPair, err := authority.GenerateCertificate(csrRequest, caKeyPair, nil, 365*24*time.Hour)
+	if err != nil {
+		return trace.Wrap(err)
+	}
+	if outCert != "" {
+		err := ioutil.WriteFile(outCert, keyPair.CertPEM, defaults.SharedReadMask)
+		if err != nil {
+			return trace.Wrap(err)
+		}
+	} else {
+		fmt.Println(string(keyPair.CertPEM))
+	}
+	if outKey != "" {
+		err := ioutil.WriteFile(outKey, keyPair.KeyPEM, defaults.SharedReadMask)
+		if err != nil {
+			return trace.Wrap(err)
+		}
+	} else {
+		fmt.Println(string(keyPair.KeyPEM))
+	}
+	return nil
+}

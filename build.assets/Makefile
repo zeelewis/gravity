@@ -76,7 +76,7 @@ TELEKUBE_TSH_TAG := v3.2.14
 # Extra flags that may be provided when publishing telekube artifacts (e.g. --insecure)
 TELEKUBE_PUBLISH_FLAGS ?=
 
-BINARIES ?= tele gravity terraform-provider-gravity
+BINARIES ?= tele gravity lens terraform-provider-gravity
 
 # release tarball path
 RELEASE_TARBALL_NAME := gravity-$(GRAVITY_VERSION)-$(OS)-$(ARCH)-bin.tar.gz

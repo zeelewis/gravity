@@ -17,6 +17,12 @@ limitations under the License.
 package cli
 
 import (
+	"context"
+	"io/ioutil"
+	"os"
+	"os/signal"
+	"syscall"
+
 	"github.com/gravitational/gravity/lib/lens"
 
 	"github.com/gravitational/trace"
@@ -24,8 +30,11 @@ import (
 )
 
 type admissionServerConfig struct {
-	listenAddress  string
-	kubeConfigPath string
+	listenAddress   string
+	kubeConfigPath  string
+	certificatePath string
+	keyPath         string
+	defaultRegistry string
 }
 
 func startAdmissionServer(config admissionServerConfig) error {
@@ -33,11 +42,35 @@ func startAdmissionServer(config admissionServerConfig) error {
 	if err != nil {
 		return trace.Wrap(err)
 	}
-	server, err := lens.NewAdmissionServer(lens.AdmissionServerConfig{
-		Config: kubeConfig,
+	certificatePEM, err := ioutil.ReadFile(config.certificatePath)
+	if err != nil {
+		return trace.ConvertSystemError(err)
+	}
+	keyPEM, err := ioutil.ReadFile(config.keyPath)
+	if err != nil {
+		return trace.ConvertSystemError(err)
+	}
+	mutator, err := lens.NewMutator(lens.MutatorConfig{
+		KubeConfig:      kubeConfig,
+		DefaultRegistry: config.defaultRegistry,
 	})
 	if err != nil {
 		return trace.Wrap(err)
 	}
+	server, err := lens.NewAdmissionServer(lens.AdmissionServerConfig{
+		ListenAddress:  config.listenAddress,
+		CertificatePEM: certificatePEM,
+		KeyPEM:         keyPEM,
+		Mutator:        mutator,
+	})
+	if err != nil {
+		return trace.Wrap(err)
+	}
+	go server.ListenAndServe()
+	// TODO(r0mant): Encapsulate inside server.
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
+	<-signalChan
+	server.Shutdown(context.Background())
 	return nil
 }

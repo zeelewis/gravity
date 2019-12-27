@@ -34,14 +34,17 @@ func Run(lens Application) error {
 	if *lens.Debug {
 		utils.InitLogger(utils.LoggingForDaemon, logrus.DebugLevel)
 	} else {
-		utils.InitLogger(utils.LoggingForCLI, logrus.InfoLevel)
+		utils.InitLogger(utils.LoggingForDaemon, logrus.InfoLevel)
 	}
 
 	switch cmd {
 	case lens.StartCmd.FullCommand():
 		return startAdmissionServer(admissionServerConfig{
-			listenAddress:  *lens.StartCmd.ListenAddress,
-			kubeConfigPath: *lens.StartCmd.KubeConfig,
+			listenAddress:   *lens.StartCmd.ListenAddress,
+			kubeConfigPath:  *lens.StartCmd.KubeConfig,
+			certificatePath: *lens.StartCmd.CertificatePath,
+			keyPath:         *lens.StartCmd.KeyPath,
+			defaultRegistry: *lens.StartCmd.DefaultRegistry,
 		})
 	}
 

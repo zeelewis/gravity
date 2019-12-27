@@ -200,7 +200,7 @@ PROTOC_PLATFORM := linux-x86_64
 GOGO_PROTO_TAG ?= v1.3.0
 GRPC_GATEWAY_TAG ?= v1.11.3
 
-BINARIES ?= tele gravity terraform-provider-gravity
+BINARIES ?= tele gravity lens terraform-provider-gravity
 TF_PROVIDERS ?= terraform-provider-gravity
 
 export

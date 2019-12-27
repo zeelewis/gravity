@@ -16,18 +16,25 @@ limitations under the License.
 
 package cli
 
-import "gopkg.in/alecthomas/kingpin.v2"
+import (
+	"github.com/gravitational/gravity/lib/lens"
+
+	"gopkg.in/alecthomas/kingpin.v2"
+)
 
 func RegisterCommands(app *kingpin.Application) Application {
-	lens := Application{
+	l := Application{
 		Application: app,
 	}
 
-	lens.Debug = app.Flag("debug", "Enable verbose logging output.").Bool()
+	l.Debug = app.Flag("debug", "Enable verbose logging output.").Bool()
 
-	lens.StartCmd.CmdClause = app.Command("start", "Start admission server.")
-	lens.StartCmd.ListenAddress = lens.StartCmd.Flag("listen-address", "Address and port to listen on.").String()
-	lens.StartCmd.KubeConfig = lens.StartCmd.Flag("kubeconfig", "Path to kubeconfig file with API server credentials. If not provided, in-cluster config will be used.").String()
+	l.StartCmd.CmdClause = app.Command("start", "Start admission server.")
+	l.StartCmd.ListenAddress = l.StartCmd.Flag("listen-address", "Address and port to listen on.").String()
+	l.StartCmd.KubeConfig = l.StartCmd.Flag("kubeconfig", "Path to kubeconfig file with API server credentials. If not provided, in-cluster config will be used.").String()
+	l.StartCmd.CertificatePath = l.StartCmd.Flag("cert-path", "Path to TLS certificate.").Required().String()
+	l.StartCmd.KeyPath = l.StartCmd.Flag("key-path", "Path to TLS certificate private key.").Required().String()
+	l.StartCmd.DefaultRegistry = l.StartCmd.Flag("default-registry", "Default registry to rewrite images to.").Default(lens.DefaultRegistry).String()
 
-	return lens
+	return l
 }

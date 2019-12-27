@@ -593,6 +593,13 @@ func RegisterCommands(app *kingpin.Application) *Application {
 	g.SystemExportCACmd.ClusterName = g.SystemExportCACmd.Arg("cluster-name", "Name of the local cluster").Required().String()
 	g.SystemExportCACmd.CAPath = g.SystemExportCACmd.Arg("path", "File path to export CA at").Required().String()
 
+	g.SystemSignCmd.CmdClause = g.SystemCmd.Command("sign", "Sign certificate with a CA.")
+	g.SystemSignCmd.CACertPath = g.SystemSignCmd.Flag("ca-cert", "Path to CA certificate file.").Required().String()
+	g.SystemSignCmd.CAKeyPath = g.SystemSignCmd.Flag("ca-key", "Path to CA private key file.").Required().String()
+	g.SystemSignCmd.Hosts = g.SystemSignCmd.Flag("hosts", "List of principals for the signed certificate.").Strings()
+	g.SystemSignCmd.OutCert = g.SystemSignCmd.Flag("out-cert", "Where to output signed certificate.").String()
+	g.SystemSignCmd.OutKey = g.SystemSignCmd.Flag("out-key", "Where output generated private key.").String()
+
 	g.SystemUninstallCmd.CmdClause = g.SystemCmd.Command("uninstall", "uninstall gravity from the host").Hidden()
 	g.SystemUninstallCmd.Confirmed = g.SystemUninstallCmd.Flag("confirm", "confirm uninstall").Bool()
 
