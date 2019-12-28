@@ -24,7 +24,6 @@ import (
 	clusterv1beta1 "github.com/gravitational/gravity/lib/apis/cluster/v1beta1"
 	"github.com/gravitational/gravity/lib/app/resources"
 	clusterv1beta1client "github.com/gravitational/gravity/lib/client/clientset/versioned/typed/cluster/v1beta1"
-	"github.com/gravitational/gravity/lib/constants"
 	"github.com/gravitational/gravity/lib/loc"
 
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
@@ -73,7 +72,7 @@ func NewMutator(config MutatorConfig) (*Mutator, error) {
 }
 
 func (m *Mutator) loadImageSets() ([]clusterv1beta1.ImageSet, error) {
-	imageSets, err := m.client.ImageSets(constants.AllNamespaces).List(metav1.ListOptions{})
+	imageSets, err := m.client.ImageSets().List(metav1.ListOptions{})
 	if err != nil {
 		return nil, trace.Wrap(err)
 	}

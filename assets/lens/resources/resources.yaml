@@ -1,0 +1,121 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: imagesets.cluster.gravitational.io
+spec:
+  group: cluster.gravitational.io
+  versions:
+  - name: v1beta1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        required: ["spec"]
+        properties:
+          spec:
+            type: object
+            required: ["images"]
+            properties:
+              images:
+                type: array
+                items:
+                  type: object
+                  required: ["image"]
+                  properties:
+                    image:
+                      type: string
+                    registry:
+                      type: string
+    additionalPrinterColumns:
+    - name: Images
+      type: string
+      jsonPath: .spec.images[*].image
+    - name: Age
+      type: date
+      jsonPath: .metadata.creationTimestamp
+  # TODO(r0mant): Make namespaced?
+  scope: Cluster
+  names:
+    kind: ImageSet
+    plural: imagesets
+    singular: imageset
+    shortNames:
+    - imgset
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: lens-admission-server
+  namespace: kube-system
+  labels:
+    app: lens
+spec:
+  selector:
+    matchLabels:
+      app: lens
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        app: lens
+      annotations:
+        scheduler.alpha.kubernetes.io/critical-pod: ''
+        seccomp.security.alpha.kubernetes.io/pod: docker/default
+    spec:
+      hostNetwork: true
+      serviceAccountName: lens
+      tolerations:
+      - effect: NoSchedule
+        operator: Exists
+      - effect: NoExecute
+        operator: Exists
+      priorityClassName: lens-high-priority
+      containers:
+        - name: lens
+          image: registry.local:5000/gravitational/lens:0.0.0
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: false
+            runAsUser: 0
+            capabilities:
+              drop:
+              - all
+              add:
+              - NET_ADMIN
+              - NET_RAW
+              - CHOWN
+          imagePullPolicy: Always
+          resources:
+            requests:
+              cpu: 100m
+              memory: 100M
+            limits:
+              cpu: 100m
+              memory: 100M
+          volumeMounts:
+            - mountPath: /host/opt/cni/bin
+              name: cni-bin-dir
+            - mountPath: /host/etc/cni/net.d
+              name: cni-net-dir
+            - mountPath: /host/etc/container-environment
+              name: container-environment
+            - mountPath: /tmp
+              name: tmpfs
+      volumes:
+      - name: secrets
+        hostPath:
+          path: /var/lib/gravity/secrets

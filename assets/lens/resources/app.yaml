@@ -1,0 +1,70 @@
+apiVersion: bundle.gravitational.io/v2
+kind: SystemApplication
+metadata:
+  name: lens
+  resourceVersion: "0.0.0"
+hooks:
+  install:
+    job: |
+      apiVersion: batch/v1
+      kind: Job
+      metadata:
+        name: lens-install
+      spec:
+        template:
+          metadata:
+            name: lens-install
+          spec:
+            restartPolicy: OnFailure
+            containers:
+              - name: hook
+                image: quay.io/gravitational/debian-tall:buster
+                command: ["/bin/sh", "/var/lib/gravity/resources/install.sh"]
+  update:
+    job: |
+      apiVersion: batch/v1
+      kind: Job
+      metadata:
+        name: lens-update
+      spec:
+        template:
+          metadata:
+            name: lens-update
+          spec:
+            restartPolicy: Never
+            containers:
+              - name: hook
+                image: gravitational/lens-hook:0.0.1
+                args: ["update"]
+  rollback:
+    job: |
+      apiVersion: batch/v1
+      kind: Job
+      metadata:
+        name: lens-rollback
+      spec:
+        template:
+          metadata:
+            name: lens-rollback
+          spec:
+            restartPolicy: Never
+            containers:
+              - name: hook
+                image: gravitational/lens-hook:0.0.1
+                args: ["rollback"]
+  uninstall:
+    job: |
+      apiVersion: batch/v1
+      kind: Job
+      metadata:
+        name: lens-uninstall
+      spec:
+        template:
+          metadata:
+            name: lens-uninstall
+          spec:
+            restartPolicy: OnFailure
+            containers:
+              - name: hook
+                image: quay.io/gravitational/debian-tall:buster
+                command: ["/bin/sh", "/var/lib/gravity/resources/uninstall.sh"]
