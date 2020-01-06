@@ -26,9 +26,12 @@ type Application struct {
 
 type StartCmd struct {
 	*kingpin.CmdClause
-	ListenAddress   *string
-	KubeConfig      *string
-	CertificatePath *string
-	KeyPath         *string
-	DefaultRegistry *string
+	ListenAddress    *string
+	KubeConfig       *string
+	CertificatePath  *string
+	KeyPath          *string
+	CAPath           *string
+	DefaultRegistry  *string
+	ServiceNamespace *string
+	ServiceName      *string
 }

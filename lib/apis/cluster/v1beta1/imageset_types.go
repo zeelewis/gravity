@@ -23,7 +23,6 @@ import (
 // TODO(r0mant): Should be namespaced?
 
 // +genclient
-// +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // ImageSet contains references of images managed by the lens controller.

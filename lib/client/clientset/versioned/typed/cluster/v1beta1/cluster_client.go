@@ -34,8 +34,8 @@ type ClusterV1beta1Client struct {
 	restClient rest.Interface
 }
 
-func (c *ClusterV1beta1Client) ImageSets() ImageSetInterface {
-	return newImageSets(c)
+func (c *ClusterV1beta1Client) ImageSets(namespace string) ImageSetInterface {
+	return newImageSets(c, namespace)
 }
 
 // NewForConfig creates a new ClusterV1beta1Client for the given config.

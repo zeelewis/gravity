@@ -41,5 +41,5 @@ func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakList
 
 // ImageSets returns a ImageSetInformer.
 func (v *version) ImageSets() ImageSetInformer {
-	return &imageSetInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+	return &imageSetInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }

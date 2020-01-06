@@ -565,6 +565,9 @@ const (
 	// LograngeAggregatorServiceName is the name of the Logrange aggregator service.
 	LograngeAggregatorServiceName = "lr-aggregator"
 
+	// LensAdmissionServerServiceName is the name of Lens admission server service.
+	LensAdmissionServerServiceName = "lens-admission-server"
+
 	// WriteFactor is a default amount of acknowledged writes for object storage
 	// to be considered successfull
 	WriteFactor = 1

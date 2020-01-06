@@ -1,7 +1,7 @@
 apiVersion: bundle.gravitational.io/v2
 kind: SystemApplication
 metadata:
-  name: lens
+  name: lens-app
   resourceVersion: "0.0.0"
 hooks:
   install:

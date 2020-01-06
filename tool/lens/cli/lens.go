@@ -30,11 +30,14 @@ import (
 )
 
 type admissionServerConfig struct {
-	listenAddress   string
-	kubeConfigPath  string
-	certificatePath string
-	keyPath         string
-	defaultRegistry string
+	listenAddress    string
+	kubeConfigPath   string
+	certificatePath  string
+	keyPath          string
+	caPath           string
+	defaultRegistry  string
+	serviceNamespace string
+	serviceName      string
 }
 
 func startAdmissionServer(config admissionServerConfig) error {

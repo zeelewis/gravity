@@ -34,8 +34,7 @@ spec:
     - name: Age
       type: date
       jsonPath: .metadata.creationTimestamp
-  # TODO(r0mant): Make namespaced?
-  scope: Cluster
+  scope: Namespaced
   names:
     kind: ImageSet
     plural: imagesets
@@ -43,17 +42,89 @@ spec:
     shortNames:
     - imgset
 ---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: lens-admission-server
+  namespace: kube-system
+---
+apiVersion: policy/v1beta1
+kind: PodSecurityPolicy
+metadata:
+  annotations:
+    seccomp.security.alpha.kubernetes.io/allowedProfileNames: docker/default
+    seccomp.security.alpha.kubernetes.io/defaultProfileName: docker/default
+  name: lens-admission-server
+  namespace: kube-system
+spec:
+  fsGroup:
+    rule: RunAsAny
+  runAsUser:
+    rule: RunAsAny
+  seLinux:
+    rule: RunAsAny
+  supplementalGroups:
+    rule: RunAsAny
+  volumes:
+  - "*"
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: lens-admission-server
+rules:
+# Allow the admission server read-only cluster-wide access
+# to ImageSet resources which it operates on.
+- apiGroups:
+  - cluster.gravitational.io
+  resources:
+  - imagesets
+  verbs:
+  - get
+  - list
+  - watch
+# Make the admission server use proper PSP.
+- apiGroups:
+  - policy
+  resources:
+  - podsecuritypolicies
+  verbs:
+  - use
+  resourceNames:
+  - lens-admission-server
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: lens-admission-server
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: lens-admission-server
+subjects:
+- kind: ServiceAccount
+  name: lens-admission-server
+  namespace: kube-system
+---
+apiVersion: scheduling.k8s.io/v1beta1
+kind: PriorityClass
+metadata:
+  name: lens-admission-server
+value: 1000000
+globalDefault: false
+description: "Priority class for Lens admission server pods."
+---
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: lens-admission-server
   namespace: kube-system
   labels:
-    app: lens
+    gravitational.io/component: lens-admission-server
 spec:
   selector:
     matchLabels:
-      app: lens
+      gravitational.io/component: lens-admission-server
   updateStrategy:
     type: RollingUpdate
     rollingUpdate:
@@ -61,61 +132,68 @@ spec:
   template:
     metadata:
       labels:
-        app: lens
+        gravitational.io/component: lens-admission-server
       annotations:
-        scheduler.alpha.kubernetes.io/critical-pod: ''
+        scheduler.alpha.kubernetes.io/critical-pod: ""
         seccomp.security.alpha.kubernetes.io/pod: docker/default
     spec:
-      hostNetwork: true
-      serviceAccountName: lens
+      serviceAccountName: lens-admission-server
       tolerations:
       - effect: NoSchedule
         operator: Exists
       - effect: NoExecute
         operator: Exists
-      priorityClassName: lens-high-priority
+      priorityClassName: lens-admission-server
+      nodeSelector:
+        gravitational.io/k8s-role: master
       containers:
-        - name: lens
-          image: registry.local:5000/gravitational/lens:0.0.0
-          env:
-            - name: POD_NAME
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.name
-            - name: POD_NAMESPACE
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.namespace
-          securityContext:
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-            runAsNonRoot: false
-            runAsUser: 0
-            capabilities:
-              drop:
-              - all
-              add:
-              - NET_ADMIN
-              - NET_RAW
-              - CHOWN
-          imagePullPolicy: Always
-          resources:
-            requests:
-              cpu: 100m
-              memory: 100M
-            limits:
-              cpu: 100m
-              memory: 100M
-          volumeMounts:
-            - mountPath: /host/opt/cni/bin
-              name: cni-bin-dir
-            - mountPath: /host/etc/cni/net.d
-              name: cni-net-dir
-            - mountPath: /host/etc/container-environment
-              name: container-environment
-            - mountPath: /tmp
-              name: tmpfs
+      - name: lens
+        image: registry.local:5000/gravitational/lens:0.0.0
+        args:
+        - start
+        - --debug
+        - --cert-path
+        - /var/lib/gravity/secrets/lens-admission-server.cert
+        - --key-path
+        - /var/lib/gravity/secrets/lens-admission-server.key
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: -1
+          capabilities:
+            drop:
+            - all
+        imagePullPolicy: Always
+        resources:
+          requests:
+            cpu: 100m
+            memory: 100M
+          limits:
+            cpu: 100m
+            memory: 100M
+        volumeMounts:
+        - mountPath: /var/lib/gravity/secrets
+          name: secrets
+        - mountPath: /tmp
+          name: tmp
       volumes:
       - name: secrets
         hostPath:
           path: /var/lib/gravity/secrets
+      - name: tmp
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: lens-admission-server
+  namespace: kube-system
+  labels:
+    gravitational.io/component: lens-admission-server
+spec:
+  ports:
+  - name: api
+    port: 5367
+  selector:
+    gravitational.io/component: lens-admission-server

@@ -34,7 +34,10 @@ func RegisterCommands(app *kingpin.Application) Application {
 	l.StartCmd.KubeConfig = l.StartCmd.Flag("kubeconfig", "Path to kubeconfig file with API server credentials. If not provided, in-cluster config will be used.").String()
 	l.StartCmd.CertificatePath = l.StartCmd.Flag("cert-path", "Path to TLS certificate.").Required().String()
 	l.StartCmd.KeyPath = l.StartCmd.Flag("key-path", "Path to TLS certificate private key.").Required().String()
+	l.StartCmd.CAPath = l.StartCmd.Flag("ca-path", "Path to TLS CA certificate.").Required().String()
 	l.StartCmd.DefaultRegistry = l.StartCmd.Flag("default-registry", "Default registry to rewrite images to.").Default(lens.DefaultRegistry).String()
+	l.StartCmd.ServiceNamespace = l.StartCmd.Flag("service-namespace", "Lens service namespace for registering webhook.").Default(lens.DefaultServiceNamespace).String()
+	l.StartCmd.ServiceName = l.StartCmd.Flag("service-name", "Lens service name for registering webhook.").Default(lens.DefaultServiceName).String()
 
 	return l
 }

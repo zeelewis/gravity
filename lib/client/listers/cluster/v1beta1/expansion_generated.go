@@ -21,3 +21,7 @@ package v1beta1
 // ImageSetListerExpansion allows custom methods to be added to
 // ImageSetLister.
 type ImageSetListerExpansion interface{}
+
+// ImageSetNamespaceListerExpansion allows custom methods to be added to
+// ImageSetNamespaceLister.
+type ImageSetNamespaceListerExpansion interface{}

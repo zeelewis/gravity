@@ -638,11 +638,17 @@ func (s *site) getPlanetMasterSecretsPackage(ctx *operationContext, p planetMast
 		constants.LograngeAggregatorKeyPair:     {},
 		constants.LograngeCollectorKeyPair:      {},
 		constants.LograngeForwarderKeyPair:      {},
+		constants.LensAdmissionServerKeyPair:    {},
 	}
 
 	for name, config := range keyPairTypes {
 		req := csr.CertificateRequest{
-			Hosts: []string{constants.LoopbackIP, constants.AlternativeLoopbackIP, p.master.AdvertiseIP, p.master.Hostname},
+			Hosts: []string{
+				constants.LoopbackIP,
+				constants.AlternativeLoopbackIP,
+				p.master.AdvertiseIP,
+				p.master.Hostname,
+			},
 		}
 		commonName := config.userName
 		if commonName == "" {
@@ -690,6 +696,10 @@ func (s *site) getPlanetMasterSecretsPackage(ctx *operationContext, p planetMast
 		case constants.LograngeAggregatorKeyPair:
 			req.Hosts = append(req.Hosts, utils.KubeServiceNames(
 				defaults.LograngeAggregatorServiceName,
+				defaults.KubeSystemNamespace)...)
+		case constants.LensAdmissionServerKeyPair:
+			req.Hosts = append(req.Hosts, utils.KubeServiceNames(
+				defaults.LensAdmissionServerServiceName,
 				defaults.KubeSystemNamespace)...)
 		}
 

@@ -46,7 +46,7 @@ RELEASE_OUT ?=
 TELEPORT_TAG = 3.2.14
 # TELEPORT_REPOTAG adapts TELEPORT_TAG to the teleport tagging scheme
 TELEPORT_REPOTAG := v$(TELEPORT_TAG)
-PLANET_TAG := 7.0.14-$(K8S_VER_SUFFIX)
+PLANET_TAG := 7.0.14-$(K8S_VER_SUFFIX)-1-g3bedddf
 PLANET_BRANCH := $(PLANET_TAG)
 K8S_APP_TAG := $(GRAVITY_TAG)
 TELEKUBE_APP_TAG := $(GRAVITY_TAG)
@@ -59,6 +59,7 @@ BANDWAGON_TAG ?= 6.0.1
 RBAC_APP_TAG := $(GRAVITY_TAG)
 TILLER_VERSION = 2.15.0
 TILLER_APP_TAG = 7.0.0
+LENS_APP_TAG := 0.0.1
 # URI of Wormhole container for default install
 WORMHOLE_IMG ?= quay.io/gravitational/wormhole:0.2.0
 # set this to true if you want to use locally built planet packages
@@ -92,6 +93,7 @@ TELEKUBE_APP_PKG := gravitational.io/telekube:$(TELEKUBE_APP_TAG)
 BANDWAGON_PKG := gravitational.io/bandwagon:$(BANDWAGON_TAG)
 RBAC_APP_PKG := gravitational.io/rbac-app:$(RBAC_APP_TAG)
 TILLER_APP_PKG := gravitational.io/tiller-app:$(TILLER_APP_TAG)
+LENS_APP_PKG := gravitational.io/lens-app:$(LENS_APP_TAG)
 FIO_PKG := gravitational.io/fio:$(FIO_PKG_TAG)
 
 # Output directory that stores all of the build artifacts.
@@ -147,6 +149,7 @@ K8S_APP_OUT := $(GRAVITY_BUILDDIR)/kubernetes-app.tar.gz
 RBAC_APP_OUT := $(GRAVITY_BUILDDIR)/rbac-app.tar.gz
 TELEKUBE_APP_OUT := $(GRAVITY_BUILDDIR)/telekube-app.tar.gz
 TILLER_APP_OUT := $(GRAVITY_BUILDDIR)/tiller-app.tar.gz
+LENS_APP_OUT := $(GRAVITY_BUILDDIR)/lens-app.tar.gz
 TELEKUBE_OUT := $(GRAVITY_BUILDDIR)/telekube.tar
 TF_PROVIDER_GRAVITY_OUT := $(GRAVITY_BUILDDIR)/terraform-provider-gravity
 TF_PROVIDER_GRAVITYENTERPRISE_OUT := $(GRAVITY_BUILDDIR)/terraform-provider-gravityenterprise
@@ -169,7 +172,8 @@ GRAVITY_PUBLISH_TARGETS := $(GRAVITY_OUT) \
 	$(K8S_APP_OUT) \
 	$(RBAC_APP_OUT) \
 	$(TELEKUBE_APP_OUT) \
-	$(TILLER_APP_OUT)
+	$(TILLER_APP_OUT) \
+	$(LENS_APP_OUT)
 
 TELEPORT_DIR = /var/lib/teleport
 
@@ -273,7 +277,11 @@ dns-app:
 
 .PHONY: tiller-app
 tiller-app:
-	make -C build.assets tiller-app
+	$(MAKE) -C build.assets tiller-app
+
+.PHONY: lens-app
+lens-app:
+	$(MAKE) -C build.assets lens-app
 
 #
 # reimport k8s app and refresh tarball
@@ -392,6 +400,10 @@ packages:
 # Storage application
 	- $(GRAVITY) app delete $(STORAGE_APP_PKG) $(DELETE_OPTS) && \
 	  $(GRAVITY) app import $(STORAGE_APP_OUT) $(VENDOR_OPTS)
+
+# Lens admission servwer
+	- $(GRAVITY) app delete $(LENS_APP_PKG) $(DELETE_OPTS) && \
+	  $(GRAVITY) app import $(LENS_APP_OUT) $(VENDOR_OPTS)
 
 # Monitoring - influxdb/grafana
 	- $(GRAVITY) app delete $(MONITORING_APP_PKG) $(DELETE_OPTS) && \

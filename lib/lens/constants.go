@@ -27,6 +27,10 @@ const (
 	DefaultListenAddress = "0.0.0.0"
 	// DefaultListenPort is the default admission server listen port.
 	DefaultListenPort = "5367"
+	// DefaultServiceNamespace is where Lens admission server service resides.
+	DefaultServiceNamespace = "kube-system"
+	// DefaultServiceName is the name of the Lens admission server service.
+	DefaultServiceName = "lens-admission-server"
 )
 
 var (

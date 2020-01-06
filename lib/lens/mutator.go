@@ -27,8 +27,10 @@ import (
 	"github.com/gravitational/gravity/lib/loc"
 
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
+	admissionregistrationv1beta1 "k8s.io/api/admissionregistration/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	admissionv1beta1client "k8s.io/client-go/kubernetes/typed/admissionregistration/v1beta1"
 	"k8s.io/client-go/rest"
 
 	"github.com/gravitational/trace"
@@ -53,38 +55,65 @@ func (c *MutatorConfig) CheckAndSetDefaults() error {
 type Mutator struct {
 	MutatorConfig
 	logrus.FieldLogger
-	client *clusterv1beta1client.ClusterV1beta1Client
+	admissionClient *admissionv1beta1client.AdmissionregistrationV1beta1Client
+	clusterClient   *clusterv1beta1client.ClusterV1beta1Client
 }
 
 func NewMutator(config MutatorConfig) (*Mutator, error) {
 	if err := config.CheckAndSetDefaults(); err != nil {
 		return nil, trace.Wrap(err)
 	}
-	client, err := clusterv1beta1client.NewForConfig(config.KubeConfig)
+	admissionClient, err := admissionv1beta1client.NewForConfig(config.KubeConfig)
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+	clusterClient, err := clusterv1beta1client.NewForConfig(config.KubeConfig)
 	if err != nil {
 		return nil, trace.Wrap(err)
 	}
 	return &Mutator{
-		MutatorConfig: config,
-		FieldLogger:   logrus.WithField(trace.Component, "lens:mutator"),
-		client:        client,
+		MutatorConfig:   config,
+		FieldLogger:     logrus.WithField(trace.Component, "lens:mutator"),
+		admissionClient: admissionClient,
+		clusterClient:   clusterClient,
 	}, nil
 }
 
-func (m *Mutator) loadImageSets() ([]clusterv1beta1.ImageSet, error) {
-	imageSets, err := m.client.ImageSets().List(metav1.ListOptions{})
+type WebhookConfig struct {
+	CAPEM            []byte
+	ServiceNamespace string
+	ServiceName      string
+}
+
+func (m *Mutator) RegisterWebhook(config WebhookConfig) error {
+	webhookConfiguration := &admissionregistrationv1beta1.MutatingWebhookConfiguration{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "MutatingWebhookConfiguration",
+			APIVersion: admissionregistrationv1beta1.SchemeGroupVersion.String(),
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "lens-admission-server",
+		},
+		Webhooks: []admissionregistrationv1beta1.MutatingWebhook{
+			{},
+		},
+	}
+}
+
+func (m *Mutator) loadImageSets(namespace string) ([]clusterv1beta1.ImageSet, error) {
+	imageSets, err := m.clusterClient.ImageSets(namespace).List(metav1.ListOptions{})
 	if err != nil {
 		return nil, trace.Wrap(err)
 	}
 	return imageSets.Items, nil
 }
 
-func (m *Mutator) rewriteImage(image string, log logrus.FieldLogger) (string, bool, error) {
+func (m *Mutator) rewriteImage(namespace, image string, log logrus.FieldLogger) (string, bool, error) {
 	parsed, err := loc.ParseDockerImage(image)
 	if err != nil {
 		return "", false, trace.Wrap(err)
 	}
-	imageSets, err := m.loadImageSets()
+	imageSets, err := m.loadImageSets(namespace)
 	if err != nil {
 		return "", false, trace.Wrap(err)
 	}
@@ -97,11 +126,12 @@ func (m *Mutator) rewriteImage(image string, log logrus.FieldLogger) (string, bo
 			}
 			if parsedFromSet.Repository == parsed.Repository && parsedFromSet.Tag == parsed.Tag {
 				// Found a match.
-				if image.Registry != "" {
-					parsed.Registry = image.Registry
-				} else {
-					parsed.Registry = m.DefaultRegistry
+				registry := m.registryFor(image)
+				if registry == parsed.Registry {
+					log.Debugf("Image %v already points to registry %v.", image, registry)
+					return image, false, nil
 				}
+				parsed.Registry = registry
 				log.Debugf("Image %v matched ImageSet %v/%v, will rewrite registry to %v.",
 					image, imageSet.Namespace, imageSet.Name, parsed.Registry)
 				return parsed.String(), true, nil
@@ -113,9 +143,18 @@ func (m *Mutator) rewriteImage(image string, log logrus.FieldLogger) (string, bo
 	return image, false, nil
 }
 
-func (m *Mutator) processSpec(spec corev1.PodSpec, log logrus.FieldLogger) (patches []patch, err error) {
+// registryFor returns the registry specified in the provided image spec
+// or the default one.
+func (m *Mutator) registryFor(image clusterv1beta1.ImageSetImage) string {
+	if image.Registry != "" {
+		return image.Registry
+	}
+	return m.DefaultRegistry
+}
+
+func (m *Mutator) processSpec(namespace string, spec corev1.PodSpec, log logrus.FieldLogger) (patches []patch, err error) {
 	for i, container := range spec.InitContainers {
-		image, rewritten, err := m.rewriteImage(container.Image, log)
+		image, rewritten, err := m.rewriteImage(namespace, container.Image, log)
 		if err != nil {
 			return nil, trace.Wrap(err)
 		}
@@ -130,7 +169,7 @@ func (m *Mutator) processSpec(spec corev1.PodSpec, log logrus.FieldLogger) (patc
 		}
 	}
 	for i, container := range spec.Containers {
-		image, rewritten, err := m.rewriteImage(container.Image, log)
+		image, rewritten, err := m.rewriteImage(namespace, container.Image, log)
 		if err != nil {
 			return nil, trace.Wrap(err)
 		}
@@ -167,7 +206,7 @@ func (m *Mutator) Mutate(req *admissionv1beta1.AdmissionRequest) (*admissionv1be
 	var patches []patch
 	switch object := resource.Objects[0].(type) {
 	case *corev1.Pod:
-		patches, err = m.processSpec(object.Spec, log)
+		patches, err = m.processSpec(req.Namespace, object.Spec, log)
 		if err != nil {
 			return nil, trace.Wrap(err)
 		}

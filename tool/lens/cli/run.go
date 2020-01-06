@@ -40,11 +40,14 @@ func Run(lens Application) error {
 	switch cmd {
 	case lens.StartCmd.FullCommand():
 		return startAdmissionServer(admissionServerConfig{
-			listenAddress:   *lens.StartCmd.ListenAddress,
-			kubeConfigPath:  *lens.StartCmd.KubeConfig,
-			certificatePath: *lens.StartCmd.CertificatePath,
-			keyPath:         *lens.StartCmd.KeyPath,
-			defaultRegistry: *lens.StartCmd.DefaultRegistry,
+			listenAddress:    *lens.StartCmd.ListenAddress,
+			kubeConfigPath:   *lens.StartCmd.KubeConfig,
+			certificatePath:  *lens.StartCmd.CertificatePath,
+			keyPath:          *lens.StartCmd.KeyPath,
+			caPath:           *lens.StartCmd.CAPath,
+			defaultRegistry:  *lens.StartCmd.DefaultRegistry,
+			serviceNamespace: *lens.StartCmd.ServiceNamespace,
+			serviceName:      *lens.StartCmd.ServiceName,
 		})
 	}
 

@@ -32,7 +32,7 @@ import (
 // ImageSetsGetter has a method to return a ImageSetInterface.
 // A group's client should implement this interface.
 type ImageSetsGetter interface {
-	ImageSets() ImageSetInterface
+	ImageSets(namespace string) ImageSetInterface
 }
 
 // ImageSetInterface has methods to work with ImageSet resources.
@@ -52,12 +52,14 @@ type ImageSetInterface interface {
 // imageSets implements ImageSetInterface
 type imageSets struct {
 	client rest.Interface
+	ns     string
 }
 
 // newImageSets returns a ImageSets
-func newImageSets(c *ClusterV1beta1Client) *imageSets {
+func newImageSets(c *ClusterV1beta1Client, namespace string) *imageSets {
 	return &imageSets{
 		client: c.RESTClient(),
+		ns:     namespace,
 	}
 }
 
@@ -65,6 +67,7 @@ func newImageSets(c *ClusterV1beta1Client) *imageSets {
 func (c *imageSets) Get(name string, options v1.GetOptions) (result *v1beta1.ImageSet, err error) {
 	result = &v1beta1.ImageSet{}
 	err = c.client.Get().
+		Namespace(c.ns).
 		Resource("imagesets").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
@@ -81,6 +84,7 @@ func (c *imageSets) List(opts v1.ListOptions) (result *v1beta1.ImageSetList, err
 	}
 	result = &v1beta1.ImageSetList{}
 	err = c.client.Get().
+		Namespace(c.ns).
 		Resource("imagesets").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -97,6 +101,7 @@ func (c *imageSets) Watch(opts v1.ListOptions) (watch.Interface, error) {
 	}
 	opts.Watch = true
 	return c.client.Get().
+		Namespace(c.ns).
 		Resource("imagesets").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -107,6 +112,7 @@ func (c *imageSets) Watch(opts v1.ListOptions) (watch.Interface, error) {
 func (c *imageSets) Create(imageSet *v1beta1.ImageSet) (result *v1beta1.ImageSet, err error) {
 	result = &v1beta1.ImageSet{}
 	err = c.client.Post().
+		Namespace(c.ns).
 		Resource("imagesets").
 		Body(imageSet).
 		Do().
@@ -118,6 +124,7 @@ func (c *imageSets) Create(imageSet *v1beta1.ImageSet) (result *v1beta1.ImageSet
 func (c *imageSets) Update(imageSet *v1beta1.ImageSet) (result *v1beta1.ImageSet, err error) {
 	result = &v1beta1.ImageSet{}
 	err = c.client.Put().
+		Namespace(c.ns).
 		Resource("imagesets").
 		Name(imageSet.Name).
 		Body(imageSet).
@@ -132,6 +139,7 @@ func (c *imageSets) Update(imageSet *v1beta1.ImageSet) (result *v1beta1.ImageSet
 func (c *imageSets) UpdateStatus(imageSet *v1beta1.ImageSet) (result *v1beta1.ImageSet, err error) {
 	result = &v1beta1.ImageSet{}
 	err = c.client.Put().
+		Namespace(c.ns).
 		Resource("imagesets").
 		Name(imageSet.Name).
 		SubResource("status").
@@ -144,6 +152,7 @@ func (c *imageSets) UpdateStatus(imageSet *v1beta1.ImageSet) (result *v1beta1.Im
 // Delete takes name of the imageSet and deletes it. Returns an error if one occurs.
 func (c *imageSets) Delete(name string, options *v1.DeleteOptions) error {
 	return c.client.Delete().
+		Namespace(c.ns).
 		Resource("imagesets").
 		Name(name).
 		Body(options).
@@ -158,6 +167,7 @@ func (c *imageSets) DeleteCollection(options *v1.DeleteOptions, listOptions v1.L
 		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
+		Namespace(c.ns).
 		Resource("imagesets").
 		VersionedParams(&listOptions, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -170,6 +180,7 @@ func (c *imageSets) DeleteCollection(options *v1.DeleteOptions, listOptions v1.L
 func (c *imageSets) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta1.ImageSet, err error) {
 	result = &v1beta1.ImageSet{}
 	err = c.client.Patch(pt).
+		Namespace(c.ns).
 		Resource("imagesets").
 		SubResource(subresources...).
 		Name(name).
