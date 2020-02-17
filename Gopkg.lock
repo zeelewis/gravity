@@ -1913,6 +1913,14 @@
   revision = "e2103e2c35297fb7e17febb81e49b312087a2372"
 
 [[projects]]
+  digest = "1:d0d418e1c02e6fc00259ef09d0d4f5135fc6aedac356ff0a11f4e5ef0c447270"
+  name = "github.com/sergi/go-diff"
+  packages = ["diffmatchpatch"]
+  pruneopts = "UT"
+  revision = "58c5cb1602ee9676b5d3590d782bedde80706fcc"
+  version = "v1.1.0"
+
+[[projects]]
   branch = "master"
   digest = "1:def689e73e9252f6f7fe66834a76751a41b767e03daab299e607e7226c58a855"
   name = "github.com/shurcooL/sanitized_anchor_name"
@@ -3084,6 +3092,9 @@
     "github.com/docker/distribution/registry/api/errcode",
     "github.com/docker/distribution/registry/auth",
     "github.com/docker/distribution/registry/client",
+    "github.com/docker/distribution/registry/client/auth",
+    "github.com/docker/distribution/registry/client/auth/challenge",
+    "github.com/docker/distribution/registry/client/transport",
     "github.com/docker/distribution/registry/handlers",
     "github.com/docker/distribution/registry/listener",
     "github.com/docker/distribution/registry/storage",
@@ -3169,6 +3180,7 @@
     "github.com/prometheus/client_golang/api/prometheus/v1",
     "github.com/prometheus/common/model",
     "github.com/santhosh-tekuri/jsonschema",
+    "github.com/sergi/go-diff/diffmatchpatch",
     "github.com/sirupsen/logrus",
     "github.com/sirupsen/logrus/hooks/syslog",
     "github.com/stretchr/testify/assert",

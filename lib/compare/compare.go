@@ -23,6 +23,7 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/kylelemons/godebug/diff"
+	"github.com/sergi/go-diff/diffmatchpatch"
 	check "gopkg.in/check.v1"
 )
 
@@ -41,9 +42,41 @@ var DeepEquals check.Checker = &deepEqualsChecker{
 // If comparison fails, it returns a readable diff in error.
 // Implements gocheck checker interface
 func (checker *deepEqualsChecker) Check(params []interface{}, names []string) (result bool, error string) {
+	if len(params) != 2 {
+		panic("at least two params are required")
+	}
+
+	if isString(params[0]) && isString(params[1]) {
+		info := *checker.CheckerInfo
+		return (&stringEqualsChecker{
+			CheckerInfo: &info,
+		}).Check(params, names)
+	}
+
 	result = reflect.DeepEqual(params[0], params[1])
 	if !result {
 		error = Diff(params[0], params[1])
+	}
+	return result, error
+}
+
+// StringEquals is a gocheck checker that compares two strings
+var StringEquals check.Checker = &stringEqualsChecker{
+	&check.CheckerInfo{Name: "StringEquals", Params: []string{"obtained", "expected"}},
+}
+
+// Check expects two slices in params (obtained and expected).
+// The slices are sorted before comparison, hence they are expected to implement sort.Interface.
+// If comparison fails, it returns a readable diff in error.
+// Implements gocheck checker interface
+func (checker *stringEqualsChecker) Check(params []interface{}, names []string) (result bool, error string) {
+	obtained := params[0].(string)
+	expected := params[1].(string)
+	result = reflect.DeepEqual(obtained, expected)
+	if !result {
+		dmp := diffmatchpatch.New()
+		diffs := dmp.DiffMain(obtained, expected, false)
+		error = dmp.DiffPrettyText(diffs)
 	}
 	return result, error
 }
@@ -87,6 +120,15 @@ type deepEqualsChecker struct {
 	*check.CheckerInfo
 }
 
+type stringEqualsChecker struct {
+	*check.CheckerInfo
+}
+
 type sliceEqualsChecker struct {
 	*check.CheckerInfo
+}
+
+func isString(p interface{}) bool {
+	_, ok := p.(string)
+	return ok
 }

@@ -19,7 +19,9 @@ package phases
 import (
 	"testing"
 
+	"github.com/gravitational/gravity/lib/compare"
 	"github.com/gravitational/gravity/lib/storage"
+
 	"gopkg.in/check.v1"
 )
 
@@ -34,12 +36,13 @@ func (*StartSuite) TestCoreDNSConf(c *check.C) {
 	var configTable = []struct {
 		config   CorednsConfig
 		expected string
+		comment  string
 	}{
 		{
-			CorednsConfig{
+			config: CorednsConfig{
 				Zones: map[string][]string{
-					"example.com":  []string{"1.1.1.1", "2.2.2.2"},
-					"example2.com": []string{"1.1.1.1", "2.2.2.2"},
+					"example.com":  {"1.1.1.1", "2.2.2.2"},
+					"example2.com": {"1.1.1.1", "2.2.2.2"},
 				},
 				Hosts: map[string]string{
 					"override.com":  "5.5.5.5",
@@ -47,7 +50,8 @@ func (*StartSuite) TestCoreDNSConf(c *check.C) {
 				},
 				UpstreamNameservers: []string{"1.1.1.1", "8.8.8.8"},
 			},
-			`
+			comment: "custom zones, hosts and upstream servers",
+			expected: `
 .:53 {
   reload
   errors
@@ -80,11 +84,12 @@ func (*StartSuite) TestCoreDNSConf(c *check.C) {
 `,
 		},
 		{
-			CorednsConfig{
+			config: CorednsConfig{
 				UpstreamNameservers: []string{"1.1.1.1"},
 				Rotate:              true,
 			},
-			`
+			comment: "rotate with a custom name server",
+			expected: `
 .:53 {
   reload
   errors
@@ -109,10 +114,11 @@ func (*StartSuite) TestCoreDNSConf(c *check.C) {
 `,
 		},
 		{
-			CorednsConfig{
+			config: CorednsConfig{
 				Rotate: true,
 			},
-			`
+			comment: "rotate",
+			expected: `
 .:53 {
   reload
   errors
@@ -138,8 +144,9 @@ func (*StartSuite) TestCoreDNSConf(c *check.C) {
 	for _, tt := range configTable {
 		config, err := GenerateCorefile(tt.config)
 
-		c.Assert(err, check.IsNil)
-		c.Assert(config, check.Equals, tt.expected)
+		comment := check.Commentf(tt.comment)
+		c.Assert(err, check.IsNil, comment)
+		c.Assert(config, compare.DeepEquals, tt.expected, comment)
 	}
 
 }
