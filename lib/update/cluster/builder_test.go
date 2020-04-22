@@ -412,18 +412,34 @@ func (r *params) bootstrap() storage.OperationPhase {
 }
 
 func (r *params) masters(otherMasters []storage.UpdateServer) storage.OperationPhase {
+	t := func(format string, node storage.UpdateServer) string {
+		return fmt.Sprintf(format, node.Hostname)
+	}
 	return storage.OperationPhase{
 		ID:          "/masters",
 		Description: "Update master nodes",
 		Requires:    []string{"/checks", "/bootstrap", "/pre-update", "/coredns"},
 		Phases: []storage.OperationPhase{
-			r.leaderMasterPhase(serversToStorage(otherMasters...)),
+			r.leaderMasterPhase(),
+			{
+				ID:          t("/masters/elect-%v", r.leadMaster),
+				Executor:    electionStatus,
+				Description: t("Make node %q Kubernetes leader", r.leadMaster),
+				Data: &storage.OperationPhaseData{
+					Server: &r.leadMaster.Server,
+					ElectionChange: &storage.ElectionChange{
+						EnableServers:  []storage.Server{r.leadMaster.Server},
+						DisableServers: serversToStorage(otherMasters...),
+					},
+				},
+				Requires: []string{t("/masters/%v", r.leadMaster)},
+			},
 			r.otherMasterPhase(otherMasters[0]),
 		},
 	}
 }
 
-func (r *params) leaderMasterPhase(otherMasters []storage.Server) storage.OperationPhase {
+func (r *params) leaderMasterPhase() storage.OperationPhase {
 	t := func(format string) string {
 		return fmt.Sprintf(format, r.leadMaster.Hostname)
 	}
@@ -440,7 +456,7 @@ func (r *params) leaderMasterPhase(otherMasters []storage.Server) storage.Operat
 				},
 			},
 			{
-				ID:          t("/masters/%[1]v/stepdown"),
+				ID:          t("/masters/%[1]v/stepdown-%[1]v"),
 				Executor:    electionStatus,
 				Description: t("Step down %q as Kubernetes leader"),
 				Data: &storage.OperationPhaseData{
@@ -459,7 +475,7 @@ func (r *params) leaderMasterPhase(otherMasters []storage.Server) storage.Operat
 					Server:     &r.leadMaster.Server,
 					ExecServer: &r.leadMaster.Server,
 				},
-				Requires: []string{t("/masters/%[1]v/stepdown")},
+				Requires: []string{t("/masters/%[1]v/stepdown-%[1]v")},
 			},
 			{
 				ID:          t("/masters/%v/system-upgrade"),
@@ -474,28 +490,6 @@ func (r *params) leaderMasterPhase(otherMasters []storage.Server) storage.Operat
 				Requires: []string{t("/masters/%v/drain")},
 			},
 			{
-				ID:          t("/masters/%[1]v/elect"),
-				Executor:    electionStatus,
-				Description: t("Make node %q Kubernetes leader"),
-				Data: &storage.OperationPhaseData{
-					Server: &r.leadMaster.Server,
-					ElectionChange: &storage.ElectionChange{
-						EnableServers:  []storage.Server{r.leadMaster.Server},
-						DisableServers: otherMasters,
-					},
-				},
-				Requires: []string{t("/masters/%v/system-upgrade")},
-			},
-			{
-				ID:          t("/masters/%[1]v/health"),
-				Executor:    nodeHealth,
-				Description: t("Health check node %q"),
-				Data: &storage.OperationPhaseData{
-					Server: &r.leadMaster.Server,
-				},
-				Requires: []string{t("/masters/%v/elect")},
-			},
-			{
 				ID:          t("/masters/%v/uncordon"),
 				Executor:    uncordonNode,
 				Description: t("Uncordon node %q"),
@@ -503,7 +497,7 @@ func (r *params) leaderMasterPhase(otherMasters []storage.Server) storage.Operat
 					Server:     &r.leadMaster.Server,
 					ExecServer: &r.leadMaster.Server,
 				},
-				Requires: []string{t("/masters/%v/health")},
+				Requires: []string{t("/masters/%v/system-upgrade")},
 			},
 		},
 	}
@@ -516,7 +510,7 @@ func (r *params) otherMasterPhase(server storage.UpdateServer) storage.Operation
 	return storage.OperationPhase{
 		ID:          t("/masters/%v"),
 		Description: t("Update system software on master node %q"),
-		Requires:    []string{fmt.Sprintf("/masters/%v", r.leadMaster.Hostname)},
+		Requires:    []string{fmt.Sprintf("/masters/elect-%v", r.leadMaster.Hostname)},
 		Phases: []storage.OperationPhase{
 			{
 				ID:          t("/masters/%v/drain"),
@@ -540,27 +534,6 @@ func (r *params) otherMasterPhase(server storage.UpdateServer) storage.Operation
 				Requires: []string{t("/masters/%v/drain")},
 			},
 			{
-				ID:          t("/masters/%[1]v/elect"),
-				Executor:    electionStatus,
-				Description: t("Enable leader election on node %q"),
-				Data: &storage.OperationPhaseData{
-					Server: &server.Server,
-					ElectionChange: &storage.ElectionChange{
-						EnableServers: []storage.Server{server.Server},
-					},
-				},
-				Requires: []string{t("/masters/%v/system-upgrade")},
-			},
-			{
-				ID:          t("/masters/%[1]v/health"),
-				Executor:    nodeHealth,
-				Description: t("Health check node %q"),
-				Data: &storage.OperationPhaseData{
-					Server: &server.Server,
-				},
-				Requires: []string{t("/masters/%v/elect")},
-			},
-			{
 				ID:          t("/masters/%v/uncordon"),
 				Executor:    uncordonNode,
 				Description: t("Uncordon node %q"),
@@ -568,7 +541,7 @@ func (r *params) otherMasterPhase(server storage.UpdateServer) storage.Operation
 					Server:     &server.Server,
 					ExecServer: &r.leadMaster.Server,
 				},
-				Requires: []string{t("/masters/%v/health")},
+				Requires: []string{t("/masters/%v/system-upgrade")},
 			},
 			{
 				ID:          t("/masters/%v/endpoints"),
@@ -579,6 +552,18 @@ func (r *params) otherMasterPhase(server storage.UpdateServer) storage.Operation
 					ExecServer: &r.leadMaster.Server,
 				},
 				Requires: []string{t("/masters/%v/uncordon")},
+			},
+			{
+				ID:          t("/masters/%[1]v/enable-%[1]v"),
+				Executor:    electionStatus,
+				Description: t("Enable leader election on node %q"),
+				Data: &storage.OperationPhaseData{
+					Server: &server.Server,
+					ElectionChange: &storage.ElectionChange{
+						EnableServers: []storage.Server{server.Server},
+					},
+				},
+				Requires: []string{t("/masters/%v/endpoints")},
 			},
 		},
 	}
@@ -625,15 +610,6 @@ func (r *params) nodePhase(server storage.UpdateServer) storage.OperationPhase {
 				Requires: []string{t("/nodes/%v/drain")},
 			},
 			{
-				ID:          t("/nodes/%[1]v/health"),
-				Executor:    nodeHealth,
-				Description: t("Health check node %q"),
-				Data: &storage.OperationPhaseData{
-					Server: &server.Server,
-				},
-				Requires: []string{t("/nodes/%v/system-upgrade")},
-			},
-			{
 				ID:          t("/nodes/%v/uncordon"),
 				Executor:    uncordonNode,
 				Description: t("Uncordon node %q"),
@@ -641,7 +617,7 @@ func (r *params) nodePhase(server storage.UpdateServer) storage.OperationPhase {
 					Server:     &server.Server,
 					ExecServer: &r.leadMaster.Server,
 				},
-				Requires: []string{t("/nodes/%v/health")},
+				Requires: []string{t("/nodes/%v/system-upgrade")},
 			},
 			{
 				ID:          t("/nodes/%v/endpoints"),
