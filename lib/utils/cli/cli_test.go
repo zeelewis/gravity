@@ -63,22 +63,44 @@ func (*S) TestUpdatesCommandLine(c *check.C) {
 		},
 		{
 			comment:   "Handles negated flags",
-			inputArgs: []string{"install", "--no-selinux", "/path/to/data"},
+			inputArgs: []string{"install", "--no-debug", "/path/to/data"},
 			outputArgs: []string{
-				"install", "--no-selinux", `"/path/to/data"`,
+				"install", "--no-debug", `"/path/to/data"`,
 			},
 		},
 		{
 			comment: "Replaces boolean flag with opposite value",
-			// selinux is on by default
+			// debug is off by default
 			inputArgs: []string{"install", "/path/to/data"},
 			outputArgs: []string{
-				"install", "--no-selinux", `"/path/to/data"`,
+				"install", "--debug", `"/path/to/data"`,
 			},
 			flags: []Flag{
-				NewBoolFlag("selinux", false),
+				NewBoolFlag("debug", true),
 			},
-			removeFlags: []string{"selinux"},
+			removeFlags: []string{"debug"},
+		},
+		{
+			comment:   "Can update existing positional argument",
+			inputArgs: []string{"install", "/path/to/data"},
+			outputArgs: []string{
+				"install", `"/path/to/data"`,
+			},
+			flags: []Flag{
+				NewArg("path", "/path/to/data"),
+			},
+			removeFlags: []string{"path"},
+		},
+		{
+			comment:   "Adds implicit positional argument",
+			inputArgs: []string{"install"},
+			outputArgs: []string{
+				"install", `"/path/to/data"`,
+			},
+			flags: []Flag{
+				NewArg("path", "/path/to/data"),
+			},
+			removeFlags: []string{"path"},
 		},
 	}
 
@@ -101,7 +123,6 @@ func parseArgs(args []string) (*kingpin.ParseContext, error) {
 	cmd := app.Command("install", "")
 	cmd.Arg("path", "").String()
 	cmd.Flag("token", "").String()
-	cmd.Flag("selinux", "").Default("true").Bool()
 	cmd.Flag("advertise-addr", "").String()
 	cmd.Flag("cloud-provider", "").String()
 	return app.ParseContext(args)
