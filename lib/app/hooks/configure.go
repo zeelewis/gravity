@@ -104,6 +104,10 @@ func configureMetadata(job *batchv1.Job, p Params) error {
 				Name:  constants.ServiceUserEnvVar,
 				Value: p.ServiceUser.UID,
 			},
+			v1.EnvVar{
+				Name:  constants.ServiceGroupEnvVar,
+				Value: p.ServiceUser.GID,
+			},
 		)
 		// set image pull policy if none specified
 		if job.Spec.Template.Spec.Containers[i].ImagePullPolicy == "" {
