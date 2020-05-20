@@ -18,11 +18,19 @@ package cli
 
 import (
 	"context"
+	"fmt"
+	"io"
+	"os"
+	"sort"
+	"strings"
 
 	"github.com/gravitational/gravity/lib/app/service"
 	"github.com/gravitational/gravity/lib/builder"
 	"github.com/gravitational/gravity/lib/utils"
+	"github.com/gravitational/gravity/tool/common"
 
+	"github.com/buger/goterm"
+	teleutils "github.com/gravitational/teleport/lib/utils"
 	"github.com/gravitational/trace"
 )
 
@@ -48,6 +56,10 @@ type BuildParameters struct {
 	Vendor service.VendorRequest
 	// BaseImage sets base image for the cluster image
 	BaseImage string
+	// UpgradeFrom
+	UpgradeFrom string
+	// Diff
+	Diff bool
 }
 
 // Level returns level at which the progress should be reported based on the CLI parameters.
@@ -72,6 +84,9 @@ func (p BuildParameters) BuilderConfig() builder.Config {
 }
 
 func buildClusterImage(ctx context.Context, params BuildParameters) error {
+	if params.Diff {
+		return diffClusterImage(params)
+	}
 	clusterBuilder, err := builder.NewClusterBuilder(params.BuilderConfig())
 	if err != nil {
 		return trace.Wrap(err)
@@ -83,10 +98,14 @@ func buildClusterImage(ctx context.Context, params BuildParameters) error {
 		Overwrite:  params.Overwrite,
 		BaseImage:  params.BaseImage,
 		Vendor:     params.Vendor,
+		From:       params.UpgradeFrom,
 	})
 }
 
 func buildApplicationImage(ctx context.Context, params BuildParameters) error {
+	if params.Diff {
+		return diffApplicationImage(params)
+	}
 	appBuilder, err := builder.NewApplicationBuilder(params.BuilderConfig())
 	if err != nil {
 		return trace.Wrap(err)
@@ -97,5 +116,92 @@ func buildApplicationImage(ctx context.Context, params BuildParameters) error {
 		OutputPath: params.OutPath,
 		Overwrite:  params.Overwrite,
 		Vendor:     params.Vendor,
+		From:       params.UpgradeFrom,
 	})
+}
+
+func diffClusterImage(params BuildParameters) error {
+	clusterBuilder, err := builder.NewClusterBuilder(params.BuilderConfig())
+	if err != nil {
+		return trace.Wrap(err)
+	}
+	defer clusterBuilder.Close()
+
+	newImage, err := clusterBuilder.Inspect(builder.ClusterRequest{
+		SourcePath: params.SourcePath,
+		Vendor:     params.Vendor,
+	})
+	if err != nil {
+		return trace.Wrap(err)
+	}
+
+	oldImage, err := builder.GetImages(context.TODO(), params.UpgradeFrom)
+	if err != nil {
+		return trace.Wrap(err)
+	}
+
+	diffImages(oldImage, newImage)
+	return nil
+}
+
+func diffApplicationImage(params BuildParameters) error {
+	appBuilder, err := builder.NewApplicationBuilder(params.BuilderConfig())
+	if err != nil {
+		return trace.Wrap(err)
+	}
+	defer appBuilder.Close()
+
+	newImage, err := appBuilder.Inspect(builder.ApplicationRequest{
+		ChartPath: params.SourcePath,
+		Vendor:    params.Vendor,
+	})
+	if err != nil {
+		return trace.Wrap(err)
+	}
+
+	oldImage, err := builder.GetImages(context.TODO(), params.UpgradeFrom)
+	if err != nil {
+		return trace.Wrap(err)
+	}
+
+	diffImages(oldImage, newImage)
+	return nil
+}
+
+func diffImages(oldImage, newImage *builder.InspectResponse) {
+	newImages := make(map[string][]string)
+	oldImages := make(map[string][]string)
+	allImages := []string{}
+
+	for _, image := range newImage.Images {
+		newImages[image.Repository] = append(newImages[image.Repository], image.Tag)
+		allImages = append(allImages, image.Repository)
+	}
+	for _, image := range oldImage.Images {
+		oldImages[image.Repository] = append(oldImages[image.Repository], image.Tag)
+		allImages = append(allImages, image.Repository)
+	}
+
+	allImages = teleutils.Deduplicate(allImages)
+	sort.Strings(allImages)
+
+	t := goterm.NewTable(0, 10, 5, ' ', 0)
+	common.PrintTableHeader(t, []string{
+		"",
+		fmt.Sprintf("%v:%v", oldImage.Manifest.Locator().Name, oldImage.Manifest.Locator().Version),
+		fmt.Sprintf("%v:%v", newImage.Manifest.Locator().Name, newImage.Manifest.Locator().Version),
+	})
+	for _, image := range allImages {
+		oldTags, isOld := oldImages[image]
+		newTags, isNew := newImages[image]
+		if isOld && isNew {
+			fmt.Fprintf(t, "%v\t%v\t%v\n", image, strings.Join(oldTags, ", "), strings.Join(newTags, ", "))
+		} else if isOld {
+			fmt.Fprintf(t, "%v\t%v\t%v\n", image, strings.Join(oldTags, ", "), "")
+		} else {
+			fmt.Fprintf(t, "%v\t%v\t%v\n", image, "", strings.Join(newTags, ", "))
+		}
+	}
+
+	io.WriteString(os.Stdout, t.String())
 }

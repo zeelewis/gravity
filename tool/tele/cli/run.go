@@ -61,6 +61,8 @@ func Run(tele Application) error {
 			Verbose:          *tele.BuildCmd.Verbose,
 			BaseImage:        *tele.BuildCmd.BaseImage,
 			Insecure:         *tele.Insecure,
+			UpgradeFrom:      *tele.BuildCmd.UpgradeFrom,
+			Diff:             *tele.BuildCmd.Diff,
 			Vendor: service.VendorRequest{
 				PackageName:            *tele.BuildCmd.Name,
 				PackageVersion:         *tele.BuildCmd.Version,
@@ -79,13 +81,15 @@ func Run(tele Application) error {
 		})
 	case tele.HelmBuildCmd.FullCommand():
 		return buildApplicationImage(context.Background(), BuildParameters{
-			StateDir:   *tele.StateDir,
-			SourcePath: *tele.HelmBuildCmd.Path,
-			OutPath:    *tele.HelmBuildCmd.OutFile,
-			Overwrite:  *tele.HelmBuildCmd.Overwrite,
-			Silent:     *tele.HelmBuildCmd.Quiet,
-			Verbose:    *tele.HelmBuildCmd.Verbose,
-			Insecure:   *tele.Insecure,
+			StateDir:    *tele.StateDir,
+			SourcePath:  *tele.HelmBuildCmd.Path,
+			OutPath:     *tele.HelmBuildCmd.OutFile,
+			Overwrite:   *tele.HelmBuildCmd.Overwrite,
+			Silent:      *tele.HelmBuildCmd.Quiet,
+			Verbose:     *tele.HelmBuildCmd.Verbose,
+			Insecure:    *tele.Insecure,
+			UpgradeFrom: *tele.HelmBuildCmd.UpgradeFrom,
+			Diff:        *tele.HelmBuildCmd.Diff,
 			Vendor: service.VendorRequest{
 				ResourcePatterns:       *tele.HelmBuildCmd.VendorPatterns,
 				IgnoreResourcePatterns: *tele.HelmBuildCmd.VendorIgnorePatterns,

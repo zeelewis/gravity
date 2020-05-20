@@ -268,6 +268,10 @@ var (
 	TrustedCluster = MustParseLocator(
 		fmt.Sprintf("%v/%v:0.0.1", defaults.SystemAccountOrg, constants.TrustedClusterPackage))
 
+	//
+	ImageSet = MustParseLocator(
+		fmt.Sprintf("%v/%v:0.0.1", defaults.SystemAccountOrg, "image-set"))
+
 	// RPCSecrets defines a package with RPC agent credentials
 	// that the wizard and cluster controller create.
 	// The credentials are then pulled by agents that participate in installation

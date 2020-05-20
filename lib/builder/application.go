@@ -21,7 +21,10 @@ import (
 	"io/ioutil"
 	"os"
 
+	"github.com/gravitational/gravity/lib/app"
 	"github.com/gravitational/gravity/lib/app/service"
+	"github.com/gravitational/gravity/lib/loc"
+	"github.com/gravitational/gravity/lib/schema"
 
 	"github.com/gravitational/trace"
 	"k8s.io/helm/pkg/chartutil"
@@ -52,6 +55,42 @@ type ApplicationRequest struct {
 	Overwrite bool
 	// Vendor combines vendoring parameters.
 	Vendor service.VendorRequest
+	// From
+	From string
+}
+
+type InspectResponse struct {
+	Manifest *schema.Manifest
+	Images   []loc.DockerImage
+}
+
+func (b *applicationBuilder) Inspect(req ApplicationRequest) (*InspectResponse, error) {
+	chart, err := chartutil.Load(req.ChartPath)
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+	manifest, err := generateApplicationImageManifest(chart)
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+	vendorDir, err := ioutil.TempDir("", "vendor")
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+	defer os.RemoveAll(vendorDir)
+	images, err := b.GetImages(VendorRequest{
+		SourceDir: req.ChartPath,
+		VendorDir: vendorDir,
+		Manifest:  manifest,
+		Vendor:    req.Vendor,
+	})
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+	return &InspectResponse{
+		Manifest: manifest,
+		Images:   images,
+	}, nil
 }
 
 // Build builds an application image according to the provided parameters.
@@ -75,6 +114,15 @@ func (b *applicationBuilder) Build(ctx context.Context, req ApplicationRequest) 
 	b.NextStep("Building application image %v %v from Helm chart", locator.Name,
 		locator.Version)
 
+	if req.From != "" {
+		b.NextStep("Discovering Docker images in %v", req.From)
+		response, err := GetImages(ctx, req.From)
+		if err != nil {
+			return trace.Wrap(err)
+		}
+		req.Vendor.SkipImages = response.Images
+	}
+
 	vendorDir, err := ioutil.TempDir("", "vendor")
 	if err != nil {
 		return trace.Wrap(err)
@@ -82,7 +130,7 @@ func (b *applicationBuilder) Build(ctx context.Context, req ApplicationRequest) 
 	defer os.RemoveAll(vendorDir)
 
 	b.NextStep("Discovering and embedding Docker images")
-	stream, err := b.Vendor(ctx, VendorRequest{
+	vendorResp, err := b.Vendor(ctx, VendorRequest{
 		SourceDir: req.ChartPath,
 		VendorDir: vendorDir,
 		Manifest:  manifest,
@@ -91,16 +139,19 @@ func (b *applicationBuilder) Build(ctx context.Context, req ApplicationRequest) 
 	if err != nil {
 		return trace.Wrap(err)
 	}
-	defer stream.Close()
+	defer vendorResp.Stream.Close()
 
 	b.NextStep("Creating application")
-	application, err := b.CreateApplication(stream)
+	application, err := b.CreateApplication(vendorResp.Stream)
 	if err != nil {
 		return trace.Wrap(err)
 	}
 
 	b.NextStep("Packaging application image")
-	installer, err := b.GenerateInstaller(manifest, *application)
+	installer, err := b.GenerateInstaller(manifest, app.InstallerRequest{
+		Application:  application.Package,
+		DockerImages: vendorResp.DockerImages,
+	})
 	if err != nil {
 		return trace.Wrap(err)
 	}

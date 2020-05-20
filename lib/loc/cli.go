@@ -58,6 +58,13 @@ func LocatorSlice(s kingpin.Settings) *Locators {
 // DockerImages represent a slice of DockerImage.
 type DockerImages []DockerImage
 
+func (d *DockerImages) Images() (result []string) {
+	for _, image := range *d {
+		result = append(result, image.String())
+	}
+	return result
+}
+
 // IsCumulative indicates that DockerImages is a cumulative argument.
 func (*DockerImages) IsCumulative() bool {
 	return true

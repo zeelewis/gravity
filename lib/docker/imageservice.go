@@ -508,6 +508,35 @@ func ping(transport http.RoundTripper, registryAddr string) (registryauthchallen
 	return chManager, nil
 }
 
+// TODO
+func ListImages(ctx context.Context, dir string) (images []loc.DockerImage, err error) {
+	localStore, err := openLocal(dir)
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+	repositories, err := ListRepos(ctx, localStore)
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+	for _, name := range repositories {
+		repository, err := localStore.Repository(ctx, name)
+		if err != nil {
+			return nil, trace.Wrap(err)
+		}
+		tags, err := repository.Tags(ctx).All(ctx)
+		if err != nil {
+			return nil, trace.Wrap(err)
+		}
+		for _, tag := range tags {
+			images = append(images, loc.DockerImage{
+				Repository: name,
+				Tag:        tag,
+			})
+		}
+	}
+	return images, nil
+}
+
 // openLocal creates a distribution registry in the local directory given with dir
 func openLocal(dir string) (store *localStore, err error) {
 	fi, err := os.Stat(dir)

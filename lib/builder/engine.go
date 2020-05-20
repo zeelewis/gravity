@@ -228,25 +228,61 @@ type VendorRequest struct {
 	Vendor service.VendorRequest
 }
 
+type VendorResponse struct {
+	Stream       io.ReadCloser
+	DockerImages []loc.DockerImage
+}
+
 // Vendor vendors the application images in the provided directory and
 // returns the compressed data stream with the application data
-func (b *Engine) Vendor(ctx context.Context, req VendorRequest) (io.ReadCloser, error) {
-	err := utils.CopyDirContents(req.SourceDir, filepath.Join(req.VendorDir, defaults.ResourcesDir))
+func (b *Engine) Vendor(ctx context.Context, req VendorRequest) (*VendorResponse, error) {
+	vendorer, vendorReq, err := b.getVendorer(req)
 	if err != nil {
 		return nil, trace.Wrap(err)
+	}
+	vendorResp, err := vendorer.VendorDir(ctx, req.VendorDir, *vendorReq)
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+	stream, err := archive.Tar(req.VendorDir, archive.Uncompressed)
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+	return &VendorResponse{
+		Stream:       stream,
+		DockerImages: vendorResp.DockerImages,
+	}, nil
+}
+
+func (b *Engine) GetImages(req VendorRequest) ([]loc.DockerImage, error) {
+	vendorer, vendorReq, err := b.getVendorer(req)
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+	images, err := vendorer.GetImages(req.VendorDir, *vendorReq)
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+	return images, nil
+}
+
+func (b *Engine) getVendorer(req VendorRequest) (service.Vendorer, *service.VendorRequest, error) {
+	err := utils.CopyDirContents(req.SourceDir, filepath.Join(req.VendorDir, defaults.ResourcesDir))
+	if err != nil {
+		return nil, nil, trace.Wrap(err)
 	}
 	manifestPath := filepath.Join(req.VendorDir, defaults.ResourcesDir, "app.yaml")
 	data, err := yaml.Marshal(req.Manifest)
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, nil, trace.Wrap(err)
 	}
 	err = ioutil.WriteFile(manifestPath, data, defaults.SharedReadMask)
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, nil, trace.Wrap(err)
 	}
 	dockerClient, err := docker.NewDefaultClient()
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, nil, trace.Wrap(err)
 	}
 	vendorer, err := service.NewVendorer(service.VendorerConfig{
 		DockerClient: dockerClient,
@@ -255,16 +291,12 @@ func (b *Engine) Vendor(ctx context.Context, req VendorRequest) (io.ReadCloser, 
 		Packages:     b.Packages,
 	})
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, nil, trace.Wrap(err)
 	}
 	vendorReq := req.Vendor
 	vendorReq.ManifestPath = manifestPath
 	vendorReq.ProgressReporter = b.Progress
-	err = vendorer.VendorDir(ctx, req.VendorDir, vendorReq)
-	if err != nil {
-		return nil, trace.Wrap(err)
-	}
-	return archive.Tar(req.VendorDir, archive.Uncompressed)
+	return vendorer, &vendorReq, nil
 }
 
 // CreateApplication creates a Gravity application from the provided
@@ -296,8 +328,8 @@ func (b *Engine) CreateApplication(data io.ReadCloser) (*app.Application, error)
 
 // GenerateInstaller generates an installer tarball for the specified
 // application and returns its data as a stream
-func (b *Engine) GenerateInstaller(manifest *schema.Manifest, application app.Application) (io.ReadCloser, error) {
-	return b.Generator.Generate(b, manifest, application)
+func (b *Engine) GenerateInstaller(manifest *schema.Manifest, req app.InstallerRequest) (io.ReadCloser, error) {
+	return b.Generator.Generate(b, manifest, req)
 }
 
 // WriteInstaller writes the provided installer tarball data to disk

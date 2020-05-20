@@ -18,6 +18,8 @@ package service
 
 import (
 	"bytes"
+	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -25,6 +27,7 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/gravitational/gravity/lib/apis/cluster/v1beta1"
 	appservice "github.com/gravitational/gravity/lib/app"
 	"github.com/gravitational/gravity/lib/archive"
 	"github.com/gravitational/gravity/lib/blob/fs"
@@ -43,6 +46,7 @@ import (
 	"github.com/gravitational/license/authority"
 	"github.com/gravitational/trace"
 	log "github.com/sirupsen/logrus"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func (r *applications) getApplicationInstaller(
@@ -55,6 +59,30 @@ func (r *applications) getApplicationInstaller(
 		return nil, trace.Wrap(err)
 	}
 	return []*archive.Item{}, nil
+}
+
+func (r *applications) getPatchInstaller(
+	req appservice.InstallerRequest,
+	app *appservice.Application,
+	apps *applications,
+) ([]*archive.Item, error) {
+	// In addition to the application itself pull base application as well,
+	// it's needed to fully resolve the manifest.
+	toPull := []loc.Locator{app.Package}
+	baseLocator := app.Manifest.Base()
+	if baseLocator != nil {
+		// Base app should be pulled first.
+		toPull = append([]loc.Locator{*baseLocator}, toPull...)
+	}
+	err := pullApplications(toPull, apps, r, r)
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+	binary, err := r.getGravityBinaryForApp(app)
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+	return []*archive.Item{binary}, nil
 }
 
 func (r *applications) getClusterInstaller(
@@ -165,13 +193,22 @@ func (r *applications) GetAppInstaller(req appservice.InstallerRequest) (install
 	var items []*archive.Item
 	switch app.Manifest.Kind {
 	case schema.KindBundle, schema.KindCluster:
-		items, err = r.getClusterInstaller(req, app, localApps)
+		if req.Patch {
+			items, err = r.getPatchInstaller(req, app, localApps)
+		} else {
+			items, err = r.getClusterInstaller(req, app, localApps)
+		}
 	case schema.KindApplication:
 		items, err = r.getApplicationInstaller(req, app, localApps)
 	default:
 		return nil, trace.BadParameter("unsupported kind %q",
 			app.Manifest.Kind)
 	}
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+
+	err = addImageSet(req, localApps.Packages)
 	if err != nil {
 		return nil, trace.Wrap(err)
 	}
@@ -313,6 +350,31 @@ func addCertificateAuthority(req appservice.InstallerRequest, destPackages pack.
 		KeyPair: authority.TLSKeyPair{
 			CertPEM: []byte(req.CACert),
 		}}))
+}
+
+func addImageSet(req appservice.InstallerRequest, dst pack.PackageService) error {
+	if len(req.DockerImages) == 0 {
+		return nil
+	}
+	imageSet := &v1beta1.ImageSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: fmt.Sprintf("%v-%v", req.Application.Name, req.Application.Version),
+		},
+	}
+	for _, image := range req.DockerImages {
+		imageSet.Spec.Images = append(imageSet.Spec.Images, v1beta1.ImageSetImage{
+			Image: image.String(),
+		})
+	}
+	data, err := json.Marshal(imageSet)
+	if err != nil {
+		return trace.Wrap(err)
+	}
+	_, err = dst.CreatePackage(loc.ImageSet, bytes.NewReader(data))
+	if err != nil {
+		return trace.Wrap(err)
+	}
+	return nil
 }
 
 // addTrustedCluster creates packages with trusted cluster spec provided in

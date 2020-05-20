@@ -274,6 +274,10 @@ type InstallerRequest struct {
 	CACert string `json:"ca_cert,omitempty"`
 	// EncryptionKey is encryption key to encrypt installer packages with
 	EncryptionKey string `json:"encryption_key,omitempty"`
+	//
+	Patch bool `json:"patch,omitempty"`
+	//
+	DockerImages []loc.DockerImage `json:"docker_images,omitempty"`
 }
 
 // Check validates this request

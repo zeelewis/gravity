@@ -260,7 +260,26 @@ func pullApp(req AppPullRequest, state *pullState) (*app.Application, error) {
 		return nil, trace.Wrap(err)
 	}
 
-	application, err := req.SrcApp.GetApp(req.Package)
+	// see if the app itself already exists
+	application, err := req.DstApp.GetApp(req.Package)
+	if err != nil && !trace.IsNotFound(err) {
+		return nil, trace.Wrap(err)
+	}
+
+	if application != nil && IsMetadataPackage(application.PackageEnvelope) {
+		// Allow to overwrite the application if pushing over the existing metadata package
+		// i.e. package that describes an application on a remote cluster
+		req.Upsert = true
+	}
+
+	if application != nil && !req.Upsert {
+		req.Infof("Application %v already exists.", req.Package)
+		return nil, trace.AlreadyExists("app %v already exists", req.Package)
+	}
+
+	req.Infof("Pulling application %v.", req.Package)
+
+	application, err = req.SrcApp.GetApp(req.Package)
 	if err != nil {
 		return nil, trace.Wrap(err)
 	}
@@ -281,25 +300,6 @@ func pullApp(req AppPullRequest, state *pullState) (*app.Application, error) {
 			return nil, trace.Wrap(err)
 		}
 	}
-
-	// see if the app itself already exists
-	application, err = req.DstApp.GetApp(req.Package)
-	if err != nil && !trace.IsNotFound(err) {
-		return nil, trace.Wrap(err)
-	}
-
-	if application != nil && IsMetadataPackage(application.PackageEnvelope) {
-		// Allow to overwrite the application if pushing over the existing metadata package
-		// i.e. package that describes an application on a remote cluster
-		req.Upsert = true
-	}
-
-	if application != nil && !req.Upsert {
-		req.Infof("Application %v already exists.", req.Package)
-		return nil, trace.AlreadyExists("app %v already exists", req.Package)
-	}
-
-	req.Infof("Pulling application %v.", req.Package)
 
 	// pull the application itself
 	var env *pack.PackageEnvelope

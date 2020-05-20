@@ -38,7 +38,8 @@ type ImageEnvironment struct {
 	cleanup func()
 }
 
-// NewImageEnvironment returns a new environment for a specified image.
+// NewImageEnvironment returns a new environment for a specified application
+// or cluster image.
 //
 // The path can be either an image tarball or an unpacked image tarball.
 func NewImageEnvironment(path string) (*ImageEnvironment, error) {
@@ -52,7 +53,7 @@ func NewImageEnvironment(path string) (*ImageEnvironment, error) {
 		_, err := os.Stat(filepath.Join(path, defaults.ManifestFileName))
 		if err != nil {
 			return nil, trace.BadParameter("directory %q does not appear "+
-				"to contain an application image", path)
+				"to contain an application or cluster image", path)
 		}
 		return newImageEnvironment(path)
 	}
@@ -63,7 +64,7 @@ func NewImageEnvironment(path string) (*ImageEnvironment, error) {
 			return nil, trace.Wrap(err)
 		}
 		return nil, trace.BadParameter("file %q does not appear to be "+
-			"a valid application image", path)
+			"a valid application or cluster image", path)
 	}
 	// extract tarball to a temporary directory
 	unpackedPath, err := archive.Unpack(path)

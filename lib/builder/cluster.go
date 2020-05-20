@@ -21,6 +21,7 @@ import (
 	"io/ioutil"
 	"os"
 
+	"github.com/gravitational/gravity/lib/app"
 	"github.com/gravitational/gravity/lib/app/service"
 	"github.com/gravitational/gravity/lib/defaults"
 	"github.com/gravitational/gravity/lib/loc"
@@ -56,6 +57,37 @@ type ClusterRequest struct {
 	Vendor service.VendorRequest
 	// BaseImage is optional base image provided on the command line.
 	BaseImage string
+	//
+	From string
+}
+
+func (b *clusterBuilder) Inspect(req ClusterRequest) (*InspectResponse, error) {
+	imageSource, err := GetClusterImageSource(req.SourcePath)
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+	manifest, err := imageSource.Manifest()
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+	vendorDir, err := ioutil.TempDir("", "vendor")
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+	defer os.RemoveAll(vendorDir)
+	images, err := b.GetImages(VendorRequest{
+		SourceDir: imageSource.Dir(),
+		VendorDir: vendorDir,
+		Manifest:  manifest,
+		Vendor:    req.Vendor,
+	})
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+	return &InspectResponse{
+		Manifest: manifest,
+		Images:   images,
+	}, nil
 }
 
 // Build builds a cluster image according to the provided parameters.
@@ -104,6 +136,15 @@ func (b *clusterBuilder) Build(ctx context.Context, req ClusterRequest) error {
 		return trace.Wrap(err)
 	}
 
+	if req.From != "" {
+		b.NextStep("Discovering Docker images in %v", req.From)
+		response, err := GetImages(ctx, req.From)
+		if err != nil {
+			return trace.Wrap(err)
+		}
+		req.Vendor.SkipImages = response.Images
+	}
+
 	vendorDir, err := ioutil.TempDir("", "vendor")
 	if err != nil {
 		return trace.Wrap(err)
@@ -111,7 +152,7 @@ func (b *clusterBuilder) Build(ctx context.Context, req ClusterRequest) error {
 	defer os.RemoveAll(vendorDir)
 
 	b.NextStep("Discovering and embedding Docker images")
-	stream, err := b.Vendor(ctx, VendorRequest{
+	vendorResp, err := b.Vendor(ctx, VendorRequest{
 		SourceDir: imageSource.Dir(),
 		VendorDir: vendorDir,
 		Manifest:  manifest,
@@ -120,16 +161,20 @@ func (b *clusterBuilder) Build(ctx context.Context, req ClusterRequest) error {
 	if err != nil {
 		return trace.Wrap(err)
 	}
-	defer stream.Close()
+	defer vendorResp.Stream.Close()
 
 	b.NextStep("Creating application")
-	application, err := b.CreateApplication(stream)
+	application, err := b.CreateApplication(vendorResp.Stream)
 	if err != nil {
 		return trace.Wrap(err)
 	}
 
 	b.NextStep("Packaging cluster image")
-	installer, err := b.GenerateInstaller(manifest, *application)
+	installer, err := b.GenerateInstaller(manifest, app.InstallerRequest{
+		Application:  application.Package,
+		Patch:        req.From != "",
+		DockerImages: vendorResp.DockerImages,
+	})
 	if err != nil {
 		return trace.Wrap(err)
 	}

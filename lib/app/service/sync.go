@@ -60,8 +60,12 @@ func SyncApp(ctx context.Context, req SyncRequest) error {
 	}
 
 	application, err := req.AppService.GetApp(req.Package)
-	if err != nil {
+	if err != nil && !trace.IsNotFound(err) {
 		return trace.Wrap(err)
+	}
+	if trace.IsNotFound(err) {
+		log.Warn("App %v not found, skipping registry sync.", req.Package)
+		return nil
 	}
 
 	// sync base app
