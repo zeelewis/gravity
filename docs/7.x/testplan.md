@@ -1,43 +1,6 @@
-## Manual Test Plan
+# Standalone Cluster
 
-### Preparation
-
-- [ ] Build `opscenter` and `telekube` cluster images off your branch: `make production opscenter telekube`.
-
-### Hub
-
-- [ ] Install Hub in CLI mode.
-  - [ ] Verify can configure [OIDC connector](https://gravitational.com/gravity/docs/ver/6.x/config/#example-google-oidc-connector), for example:
-```yaml
-kind: oidc
-version: v2
-metadata:
-  name: google
-spec:
-  redirect_url: "https://<hub-advertise-addr>/portalapi/v1/oidc/callback"
-  client_id: <cliend-id>
-  client_secret: <client-secret>
-  issuer_url: https://accounts.google.com
-  scope: [email]
-  claims_to_roles:
-    - {claim: "hd", value: "gravitational.com", roles: ["@teleadmin"]}
-```
-  - [ ] Verify can log into the Hub UI.
-  - [ ] Verify can update TLS certificate via [resource](https://gravitational.com/gravity/docs/ver/6.x/config/#tls-key-pair) or UI.
-  - [ ] Verify can log in with `tele login`.
-  - [ ] Verify can push Telekube cluster image into the Hub.
-  - [ ] Verify can invite user to the Hub using CLI.
-    - [ ] Create a user invite: `gravity users add test@example.com --roles=@teleadmin`.
-    - [ ] Open the generated link and signup.
-    - [ ] Verify can login with the created user.
-  - [ ] Verify can reset the Hub user password using CLI.
-    - [ ] Request a user reset: `gravity users reset test@example.com`.
-    - [ ] Open the generated link and reset the password.
-    - [ ] Verify can login with the new password.
-
-### Standalone Cluster
-
-#### CLI mode
+### CLI Mode
 
 - [ ] Install Telekube cluster image in standalone CLI mode.
   - [ ] Verify can create [local user](https://gravitational.com/gravity/docs/ver/6.x/config/#example-provisioning-a-cluster-admin-user), for example:
@@ -63,19 +26,88 @@ spec:
   - [ ] Verify can join a node using CLI (`gravity join`).
   - [ ] Verify can remove a node using CLI (`gravity leave`).
 
-#### UI mode
+### UI Mode
 
 - [ ] Install Telekube cluster image in standalone UI wizard mode.
   - [ ] Verify can complete bandwagon through wizard UI.
   - [ ] Verify can log into local cluster UI with the user created in bandwagon.
 
-#### With Cluster Image Downloaded From The Hub
+# Hub & Cluster
+
+### Hub
+
+- [ ] Install Hub in CLI mode.
+  - [ ] Verify can configure [OIDC connector](https://gravitational.com/gravity/docs/ver/6.x/config/#example-google-oidc-connector), for example:
+```yaml
+kind: oidc
+version: v2
+metadata:
+  name: google
+spec:
+  redirect_url: "https://<hub-advertise-addr>/portalapi/v1/oidc/callback"
+  client_id: <cliend-id>
+  client_secret: <client-secret>
+  issuer_url: https://accounts.google.com
+  scope: [email]
+  claims_to_roles:
+    - {claim: "hd", value: "gravitational.com", roles: ["@teleadmin"]}
+```
+  - [ ] Verify can log into the Hub UI.
+  - [ ] Verify can update TLS certificate via [resource](https://gravitational.com/gravity/docs/ver/6.x/config/#tls-key-pair) or UI.
+  - [ ] Verify can log in with `tsh login --proxy=<hub>`.
+  - [ ] Verify can push Telekube cluster image into the Hub.
+  - [ ] Verify can invite user to the Hub using CLI.
+    - [ ] Create a user invite: `gravity users add test@example.com --roles=@teleadmin`.
+    - [ ] Open the generated link and signup.
+    - [ ] Verify can login with the created user.
+  - [ ] Verify can reset the Hub user password using CLI.
+    - [ ] Request a user reset: `gravity users reset test@example.com`.
+    - [ ] Open the generated link and reset the password.
+    - [ ] Verify can login with the new password.
+
+### With Cluster Image Downloaded From The Hub
 
 - [ ] Install Telekube cluster image using installer downloaded from the Hub: CLI or UI.
   - [ ] Verify cluster connects back to the Hub after installation.
     - [ ] Verify remote support is configured but turned off: cluster appears "offline" in the Hub.
 
-### Remote Support & Teleport Connectivity
+### Hub / Cluster Upgrade & Connectivity
+
+- [ ] Install a Hub of the previous LTS version.
+  - [ ] Push Telekube app of the previous LTS version into it.
+  - [ ] Install a single-node Telekube cluster and connect it to the Hub.
+- [ ] Upgrade the Hub to the current version.
+  - [ ] Verify the cluster stays connected & online.
+- [ ] Upgrade the cluster to the current version.
+  - [ ] Verify the cluster stays connected & online.
+
+# Upgrade Related Operations
+
+### Cluster Upgrade & Join
+
+- [ ] Install a 1-node cluster of previous LTS version.
+- [ ] Upgrade the cluster to the current version.
+- [ ] Join a master node to the cluster.
+  - [ ] Verify the node joined successfully.
+- [ ] Join a regular node to the cluster.
+  - [ ] Verify the node joined successfully.
+
+### Collecting Garbage
+
+This scenario tests garbage collection on a cluster.
+
+Prerequisites: multi-node cluster with at least 1 regular node. Regular node is necessary to test both master and regular node update paths.
+
+Install a previous LTS version, upgrade to the latest version.
+
+After upgrade execute `gravity gc` on the cluster.
+
+- [ ] Verify the operation completes successfully.
+ - [ ] Verify that packages from the previous installation have been removed locally.
+ - [ ] Verify that packages from the previous installation have been removed from cluster package storage.
+ - [ ] Verify that packages from the current installation are still present.
+
+# Remote Support & Teleport Connectivity
 
 - [ ] Install Telekube cluster image using any method.
 - [ ] Create a local user using any method.
@@ -91,7 +123,7 @@ spec:
   - [ ] Verify cluster appears as online in the Hub UI and the cluster's UI can be accessed.
   - [ ] Verify can SSH into a cluster node using web terminal in the Hub UI.
 
-- [ ] Log into the cluster via the Hub: `tele login --hub example.gravitational.io <cluster>`.
+- [ ] Log into the cluster via the Hub: `tsh login --proxy=example.gravitational.io <cluster>`.
   - [ ] Verify `tsh status`, `tsh ls` and `tsh ssh` commands work.
   - [ ] Verify `kubectl` was configured to talk to the cluster, e.g. `kubectl get nodes`, `kubectl get pods --all-namespaces`.
 
@@ -104,7 +136,7 @@ spec:
 - [ ] Disconnect the cluster from the Hub: `gravity resource rm trustedcluster <hub>`.
   - [ ] Verify the cluster is removed from the Hub.
 
-### Failover & Resiliency
+# Failover & Resiliency
 
 - [ ] Install 3-node cluster.
   - [ ] Stop the planet systemd service on the active master node (let's say it's `node-1`).
@@ -117,224 +149,7 @@ spec:
     - [ ] Verify that `node-1` is successfully removed from the cluster.
     - [ ] Verify that `gravity status` is reporting the cluster as healthy (may take a minute for it to recover).
 
-### Hub / Cluster Upgrade & Connectivity
-
-- [ ] Install a Hub of the previous LTS version.
-  - [ ] Push Telekube app of the previous LTS version into it.
-  - [ ] Install a single-node Telekube cluster and connect it to the Hub.
-- [ ] Push Telekube app of the current version to the Hub.
-- [ ] Upgrade the cluster to the current version.
-  - [ ] Verify the cluster stays connected & online.
-  - [ ] Verify remote support can be toggled off/on.
-- [ ] Upgrade the Hub to the current version.
-  - [ ] Verify the cluster stays connected & online.
-  - [ ] Verify remote support can be toggled off/on.
-
-### Cluster Upgrade & Join
-
-- [ ] Install a 1-node cluster of previous LTS version.
-- [ ] Upgrade the cluster to the current version.
-- [ ] Join another node to the cluster.
-  - [ ] Verify the node joined successfully.
-
-### Tele Build
-
-#### Open-Source Edition
-
-- [ ] Create a minimal cluster image manifest (`app.yaml`):
-```yaml
-apiVersion: cluster.gravitational.io/v2
-kind: Cluster
-metadata:
-    name: test
-    resourceVersion: 1.0.0
-```
-
-- [ ] Verify `tele` selects base image matching its own version:
-```bash
-$ tele build app.yaml
-```
-
-- [ ] Pick base image version from the hub compatible with `tele` (same major/minor version components):
-```bash
-$ tele ls --all
-```
-
-- [ ] Pin base image in the manifest to the selected version:
-```yaml
-apiVersion: cluster.gravitational.io/v2
-kind: Cluster
-baseImage: gravity:6.0.0
-metadata:
-    name: test
-    resourceVersion: 1.0.0
-```
-
-  - [ ] Verify can build the installer.
-```bash
-$ tele build app.yaml
-```
-
-#### Enterprise Edition
-
-- [ ] Run the same tests as for OSS version.
-  - [ ] Verify `get.gravitational.io` instead of `hub.gravitational.io` was used as a remote repository.
-
-- [ ] Log into a Hub (could be local dev one).
-```bash
-$ tele login --hub example.gravitational.io
-```
-
-- [ ] Unpin runtime from manifest and run `tele build`.
-  - [ ] Verify `tele` selects base image matching its own version.
-
-### Application Catalog
-
-This section covers the application catalog features. It requires a Hub.
-
-#### Building & Publishing
-
-- [ ] Build application images from the sample Helm charts in `assets/charts`.
-```bash
-$ tele build assets/charts/alpine-0.1.0
-$ tele build assets/charts/alpine-0.2.0
-```
-
-- [ ] Log into the Hub.
-```bash
-$ tele login --hub example.gravitational.io:32009
-```
-
-- [ ] Push the built application image into the Hub.
-```bash
-$ tele push alpine-0.1.0.tar
-```
-
-- [ ] Make sure the application is shown in the image list.
-```bash
-$ tele ls
-```
-
-- [ ] Verify the application image tarball can be downloaded from the Hub.
-```bash
-$ tele pull alpine:0.1.0
-```
-
-- [ ] Verify Helm chart can be searched for and downloaded from the Hub.
-```bash
-$ helm search alpine
-$ helm fetch example.gravitational.io/alpine --version 0.1.0
-```
-
-- [ ] Verify one of the application's Docker images can be pulled from the Hub.
-```bash
-$ docker pull example.gravitational.io:32009/alpine:3.3
-```
-
-#### Discovery
-
-- [ ] Install a cluster.
-
-- [ ] Connect the cluster to a Hub using [Trusted Cluster](https://gravitational.com/gravity/docs/config/#trusted-clusters-enterprise) resource.
-
-- [ ] Verify the application can be searched for in the connected Hub.
-```bash
-$ gravity app search --all
-$ gravity app search alpine --all
-```
-
-#### Lifecycle
-
-- [ ] Transfer both built application images (`alpine-0.1.0.tar`, `alpine-0.2.0.tar`) onto the cluster node.
-
-- [ ] Install the application.
-```bash
-$ gravity app install alpine-0.1.0.tar
-```
-
-- [ ] Verify an application instance has been deployed.
-```bash
-$ gravity app ls
-$ kubectl get pods
-```
-
-- [ ] Install the application directly from the Hub.
-```bash
-$ gravity app install <hub-name>/alpine:0.1.0
-```
-
-- [ ] Verify there are now 2 instances of the application running.
-```bash
-$ gravity app ls
-$ kubectl get pods
-```
-
-- [ ] Upgrade one of the deployed application.
-```bash
-$ gravity app upgrade <release-name> alpine-0.2.0.tar
-```
-
-- [ ] Verify the application has been upgraded.
-```bash
-$ gravity app ls
-```
-
-- [ ] Rollback the upgraded application.
-```bash
-$ gravity app rollback <release-name> 1
-```
-
-- [ ] Verify the application has been rolled back.
-```bash
-$ gravity app ls
-```
-
-### Licensing & Encryption [Enterprise Edition]
-
-This scenario builds an encrypted installer for a cluster image that requires
-a license and makes sure that it can be installed with valid license. It is
-only supported in the enterprise edition.
-
-- [ ] Generate test CA and private key:
-```bash
-$ openssl req -newkey rsa:2048 -nodes -keyout domain.key -x509 -days 365 -out domain.crt
-```
-
-- [ ] Create test app manifest that requires license (`app.yaml`):
-```yaml
-apiVersion: cluster.gravitational.io/v2
-kind: Cluster
-metadata:
-    name: test
-    resourceVersion: 1.0.0
-license:
-    enabled: true
-```
-
-- [ ] Generate a license with encryption key:
-```bash
-$ gravity license new --max-nodes=3 --valid-for=24h --ca-cert=domain.crt --ca-key=domain.key --encryption-key=qwe123 > license.pem
-```
-
-- [ ] Build an encrypted cluster image:
-```bash
-$ tele build app.yaml --ca-cert=domain.crt --encryption-key=qwe123
-```
-
-- [ ] Verify can install in wizard UI mode.
-  - [ ] Verify license prompt appears in the UI.
-  - [ ] Insert the generated license and verify the installation succeeds.
-  - [ ] Verify license can be updated via cluster UI after installation.
-
-- [ ] Verify license is enforced in CLI mode:
-```bash
-$ sudo ./gravity install # should return a license error
-```
-
-- [ ] Verify can install in CLI mode with license:
-```bash
-$ sudo ./gravity install --license="$(cat /tmp/license)"
-```
+# Cluster Resources & Operations
 
 ### Runtime Environment Update
 
@@ -425,21 +240,389 @@ root$ gravity resource create cloud-config.yaml --confirm -m
   node-tags=test-cluster
   ```
 
-### Collecting Garbage
+# Tele Build
 
-This scenario tests garbage collection on a cluster.
+### Open-Source Edition
 
-Prerequisites: multi-node cluster with at least 1 regular node. Regular node is necessary to test both master and regular node update paths.
+- [ ] Create a minimal cluster image manifest (`app.yaml`):
+```yaml
+apiVersion: cluster.gravitational.io/v2
+kind: Cluster
+metadata:
+    name: test
+    resourceVersion: 1.0.0
+```
 
-Install a previous LTS version, upgrade to the latest version.
+- [ ] Verify `tele` selects base image matching its own version:
+```bash
+$ tele build app.yaml
+```
 
-After upgrade execute `gravity gc` on the cluster.
+- [ ] Pick base image version from the hub compatible with `tele` (same major/minor version components):
+```bash
+$ tele ls --all
+```
 
-- [ ] Verify the operation completes successfully.
- - [ ] Verify that packages from the previous installation have been removed locally.
- - [ ] Verify that packages from the previous installation have been removed from cluster package storage.
- - [ ] Verify that packages from the current installation are still present.
- - [ ] Tentative: Verify that application packages from remote clusters are still present.
+- [ ] Pin base image in the manifest to the selected version:
+```yaml
+apiVersion: cluster.gravitational.io/v2
+kind: Cluster
+baseImage: gravity:6.0.0
+metadata:
+    name: test
+    resourceVersion: 1.0.0
+```
+
+  - [ ] Verify can build the installer.
+```bash
+$ tele build app.yaml
+```
+
+### Enterprise Edition
+
+- [ ] Run the same tests as for OSS version.
+  - [ ] Verify `get.gravitational.io` instead of `hub.gravitational.io` was used as a remote repository.
+
+- [ ] Log into a Hub (could be local dev one).
+```bash
+$ tsh login --proxy=example.gravitational.io
+```
+
+- [ ] Unpin runtime from manifest and run `tele build`.
+  - [ ] Verify `tele` selects base image matching its own version.
+
+# Licensing & Encryption [Enterprise Edition]
+
+This scenario builds an encrypted installer for a cluster image that requires
+a license and makes sure that it can be installed with valid license. It is
+only supported in the enterprise edition.
+
+- [ ] Generate test CA and private key:
+```bash
+$ openssl req -newkey rsa:2048 -nodes -keyout domain.key -x509 -days 365 -out domain.crt
+```
+
+- [ ] Create test app manifest that requires license (`app.yaml`):
+```yaml
+apiVersion: cluster.gravitational.io/v2
+kind: Cluster
+metadata:
+    name: test
+    resourceVersion: 1.0.0
+license:
+    enabled: true
+```
+
+- [ ] Generate a license with encryption key:
+```bash
+$ gravity license new --max-nodes=3 --valid-for=24h --ca-cert=domain.crt --ca-key=domain.key --encryption-key=qwe123 > license.pem
+```
+
+- [ ] Build an encrypted cluster image:
+```bash
+$ tele build app.yaml --ca-cert=domain.crt --encryption-key=qwe123
+```
+
+- [ ] Verify can install in wizard UI mode.
+  - [ ] Verify license prompt appears in the UI.
+  - [ ] Insert the generated license and verify the installation succeeds.
+  - [ ] Verify license can be updated via cluster UI after installation.
+
+- [ ] Verify license is enforced in CLI mode:
+```bash
+$ sudo ./gravity install # should return a license error
+```
+
+- [ ] Verify can install in CLI mode with license:
+```bash
+$ sudo ./gravity install --license-file=/tmp/license
+```
+
+# Application Catalog
+
+This section covers the application catalog features. It requires a Hub.
+
+### Building & Publishing
+
+- [ ] Build application images from the sample Helm charts in `assets/charts`.
+```bash
+$ tele build assets/charts/alpine-0.1.0
+$ tele build assets/charts/alpine-0.2.0
+```
+
+- [ ] Log into the Hub.
+```bash
+$ tsh login --proxy=example.gravitational.io:32009
+```
+
+- [ ] Push the built application image into the Hub.
+```bash
+$ tele push alpine-0.1.0.tar
+```
+
+- [ ] Make sure the application is shown in the image list.
+```bash
+$ tele ls
+```
+
+- [ ] Verify the application image tarball can be downloaded from the Hub.
+```bash
+$ tele pull alpine:0.1.0
+```
+
+- [ ] Verify Helm chart can be searched for and downloaded from the Hub.
+```bash
+$ helm search alpine
+$ helm fetch example.gravitational.io/alpine --version 0.1.0
+```
+
+- [ ] Verify one of the application's Docker images can be pulled from the Hub.
+```bash
+$ docker pull example.gravitational.io:32009/alpine:3.3
+```
+
+### Discovery
+
+- [ ] Install a cluster.
+
+- [ ] Connect the cluster to a Hub using [Trusted Cluster](https://gravitational.com/gravity/docs/config/#trusted-clusters-enterprise) resource.
+
+- [ ] Verify the application can be searched for in the connected Hub.
+```bash
+$ gravity app search --all
+$ gravity app search alpine --all
+```
+
+### Lifecycle
+
+- [ ] Transfer both built application images (`alpine-0.1.0.tar`, `alpine-0.2.0.tar`) onto the cluster node.
+
+- [ ] Install the application.
+```bash
+$ gravity app install alpine-0.1.0.tar
+```
+
+- [ ] Verify an application instance has been deployed.
+```bash
+$ gravity app ls
+$ kubectl get pods
+```
+
+- [ ] Install the application directly from the Hub.
+```bash
+$ gravity app install <hub-name>/alpine:0.1.0
+```
+
+- [ ] Verify there are now 2 instances of the application running.
+```bash
+$ gravity app ls
+$ kubectl get pods
+```
+
+- [ ] Upgrade one of the deployed application.
+```bash
+$ gravity app upgrade <release-name> alpine-0.2.0.tar
+```
+
+- [ ] Verify the application has been upgraded.
+```bash
+$ gravity app ls
+```
+
+- [ ] Rollback the upgraded application.
+```bash
+$ gravity app rollback <release-name> 1
+```
+
+- [ ] Verify the application has been rolled back.
+```bash
+$ gravity app ls
+```
+
+# Persistent Storage
+
+### Setup
+
+- [ ] Install a cluster with OpenEBS enabled (e.g. `telekube` application).
+  - [ ] Make sure the node contains at least 2 block devices that can be used by OpenEBS.
+  - [ ] Optionally configure OpenEBS-discovered devices like described in the [docs](https://gravitational.com/gravity/docs/storage/#configure-openebs), for example:
+
+```yaml
+# storage.yaml
+kind: PersistentStorage
+version: v1
+spec:
+  openebs:
+    filters:
+      devices:
+        exclude: ["/dev/sda", "/dev/sdb", "/dev/sdc"]
+```
+```bash
+$ gravity resource create storage.yaml
+```
+
+  - [ ] Verify OpenEBS discovered proper devices: `kubectl get blockdevices -A`.
+
+### Local provisioner, host path
+
+- [ ] Create a persistent volume claim for hostpath volume and a pod like in the example below.
+  - [ ] Make sure the PVC/PV have been created and `nginx-hostpath` pod is running: `kubectl get pv,pvc,pods`.
+
+```yaml
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: claim-hostpath
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: openebs-hostpath
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-hostpath
+  labels:
+    app: nginx
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+    volumeMounts:
+    - name: local-vol
+      mountPath: /data
+  volumes:
+  - name: local-vol
+    persistentVolumeClaim:
+      claimName: claim-hostpath
+```
+
+### Local provisioner, block device
+
+- [ ] Create a persistent volume claim for block device volume and a pod like in the example below.
+  - [ ] Make sure the PVC/PV have been created and `nginx-device` pod is running: `kubectl get pv,pvc,pods`.
+
+```yaml
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: claim-device
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: openebs-device
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-device
+  labels:
+    app: nginx
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+    volumeMounts:
+    - name: local-vol
+      mountPath: /data
+  volumes:
+  - name: local-vol
+    persistentVolumeClaim:
+      claimName: claim-device
+```
+
+### cStor
+
+**Note, this test requires iscsid running on host.**
+
+- [ ] Create storage pool claim, storage class, persistent volume claim and pod like in the example below.
+  - [ ] Make sure the PVC/PV have been created and `nginx-cstor` pod is running: `kubectl get pv,pvc,pods`.
+
+```yaml
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: claim-cstor
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: openebs-cstor
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-cstor
+  labels:
+    app: nginx
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+    volumeMounts:
+    - name: local-vol
+      mountPath: /data
+  volumes:
+  - name: local-vol
+    persistentVolumeClaim:
+      claimName: claim-cstor
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: openebs-cstor
+  annotations:
+    openebs.io/cas-type: cstor
+    cas.openebs.io/config: |
+      - name: StoragePoolClaim
+        value: "cstor-pool"
+      - name: ReplicaCount
+        value: "1"
+provisioner: openebs.io/provisioner-iscsi
+apiVersion: openebs.io/v1alpha1
+kind: StoragePoolClaim
+metadata:
+  name: cstor-pool
+spec:
+  name: cstor-pool
+  type: disk
+  poolSpec:
+    poolType: striped
+  blockDevices:
+    blockDeviceList:
+    # PUT YOUR BLOCK DEVICE ID HERE
+    - blockdevice-b050316406c81f24d27dd8de22ae3164
+```
+
+# Advertise IP Change
+
+### Prerequisites
+
+This scenario requires either a node with multiple network interfaces, or ability to package a node as a VM image and deploy it on another node (e.g. using AWS AMI, VmWare OVA/OVF, etc.).
+
+### Advertise IP change
+
+- [ ] Install a single-node cluster.
+  - [ ] Make some modification to the cluster, e.g. create a user using `gravity resource create` command.
+- [ ] Stop Gravity on the node using `gravity stop` command.
+  - [ ] Make sure all Gravity/Kubernetes services have been stopped.
+- [ ] (Optional) If testing using the node migration method, take a node's snapshot (AMI, OVA, etc.) and deploy another node using it, with a different IP address.
+  - [ ] Make sure that all services are still stopped after bringing the new node up.
+- [ ] Start the cluster with a new advertise address using `gravity start --advertise-addr=<new-ip>` command.
+  - [ ] Make sure the operation finished successfully and cluster comes up healthy, the node's using the new IP and all pods are running - using `gravity status`, `kubectl get pods -A`, etc.
+  - [ ] Make sure the user created on the original cluster is still present, e.g. using `gravity resource get users`.
+
+# SELinux
+
+???
+
+# Web UI
 
 ## WEB UI
 
