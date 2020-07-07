@@ -20,6 +20,7 @@ import (
 	"context"
 	"io/ioutil"
 	"os"
+	"strings"
 
 	"github.com/gravitational/gravity/lib/app/service"
 	"github.com/gravitational/gravity/lib/helm"
@@ -125,7 +126,16 @@ func Run(tele Application) error {
 	defer env.Close()
 
 	switch cmd {
+	case tele.PushCmd.FullCommand():
+		return pushToRegistry(context.Background(),
+			*tele.PushCmd.Reference,
+			*tele.PushCmd.Path)
 	case tele.PullCmd.FullCommand():
+		if strings.Index(*tele.PullCmd.App, "/") > 0 {
+			return pullFromRegistry(context.Background(),
+				*tele.PullCmd.App,
+				*tele.PullCmd.OutFile)
+		}
 		return pull(*env,
 			*tele.PullCmd.App,
 			*tele.PullCmd.OutFile,

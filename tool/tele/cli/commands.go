@@ -43,6 +43,8 @@ type Application struct {
 	HelmBuildCmd HelmBuildCmd
 	// ListCmd lists available apps and runtimes
 	ListCmd ListCmd
+	//
+	PushCmd PushCmd
 	// PullCmd downloads app installer from Ops Center
 	PullCmd PullCmd
 }
@@ -143,6 +145,15 @@ type ListCmd struct {
 	Format *constants.Format
 	// All displays all available versions
 	All *bool
+}
+
+// PushCmd uploads app installer to Ops Center
+type PushCmd struct {
+	*kingpin.CmdClause
+	// Path
+	Path *string
+	// Reference
+	Reference *string
 }
 
 // PullCmd downloads app installer from Ops Center

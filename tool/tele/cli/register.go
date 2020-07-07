@@ -84,6 +84,12 @@ func RegisterCommands(app *kingpin.Application) Application {
 	tele.ListCmd.Format = common.Format(tele.ListCmd.Flag("format", fmt.Sprintf("Output format: %v.", constants.OutputFormats)).Default(string(constants.EncodingText)))
 	tele.ListCmd.All = tele.ListCmd.Flag("all", "Display all available versions.").Bool()
 
+	tele.PushCmd.CmdClause = app.Command("push", "Push a cluster or application image to a registry.")
+	tele.PushCmd.Path = tele.PushCmd.Arg("path", "Path to a cluster or application image file.").Required().String()
+	tele.PushCmd.Reference = tele.PushCmd.Arg("reference", "Registry object reference").String()
+	// tele.PushCmd.Force = t.PushCmd.Flag("force", "Overwrite the existing image in the Gravity Hub.").Short('f').Bool()
+	// tele.PushCmd.Quiet = t.PushCmd.Flag("quiet", "Suppress any output to stdout.").Short('q').Bool()
+
 	tele.PullCmd.CmdClause = app.Command("pull", "Pull a cluster or application image from Gravity Hub.")
 	tele.PullCmd.App = tele.PullCmd.Arg("image", "Cluster or application image to download: <name>:<version> or just <name> to download the latest.").Required().String()
 	tele.PullCmd.OutFile = tele.PullCmd.Flag("output", "File name of the downloaded image. Defaults to <name>-<version>.tar.").Short('o').String()
