@@ -341,9 +341,16 @@ func PullAppDeps(req AppPullRequest, manifest schema.Manifest) error {
 }
 
 func pullAppDeps(req AppPullRequest, manifest schema.Manifest, state *pullState) error {
-	if err := req.CheckAndSetDefaults(); err != nil {
+	err := req.CheckAndSetDefaults()
+	if err != nil {
 		return trace.Wrap(err)
 	}
+
+	dependencies, err := app.GetDependencies()
+	if err != nil {
+		return trace.Wrap(err)
+	}
+
 	// pull base application if any
 	base := manifest.Base()
 	if base != nil {

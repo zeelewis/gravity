@@ -19,6 +19,7 @@ package app
 import (
 	"github.com/gravitational/gravity/lib/loc"
 	"github.com/gravitational/gravity/lib/pack"
+	"github.com/gravitational/gravity/lib/schema"
 
 	"github.com/gravitational/trace"
 	log "github.com/sirupsen/logrus"
@@ -29,6 +30,7 @@ func GetDependencies(app *Application, apps Applications) (result *Dependencies,
 	state := &state{
 		visitedPackages: map[string]struct{}{},
 		visitedApps:     map[string]struct{}{},
+		manifest:        app.Manifest,
 	}
 	if err = getDependencies(app, apps, state); err != nil {
 		return nil, trace.Wrap(err)
@@ -39,7 +41,7 @@ func GetDependencies(app *Application, apps Applications) (result *Dependencies,
 		result.Packages = append(result.Packages, *state.runtimePackage)
 	}
 	for _, locator := range state.apps {
-		if !locator.IsEqualTo(app.Package) {
+		if !locator.IsEqualTo(app.Package) { // && !schema.ShouldSkipApp(app.Manifest, locator) {
 			result.Apps = append(result.Apps, locator)
 		}
 	}
@@ -105,6 +107,10 @@ func getDependencies(app *Application, apps Applications, state *state) error {
 		appDeps = append(appDeps, *baseLocator)
 	}
 	for _, dependency := range append(appDeps, app.Manifest.Dependencies.GetApps()...) {
+		if schema.ShouldSkipApp(state.manifest, dependency) {
+			log.Infof("Skipping disabled dependency %v.", dependency)
+			continue
+		}
 		packageName := dependency.String()
 		if _, ok := state.visitedApps[packageName]; !ok {
 			app, err := apps.GetApp(dependency)
@@ -143,6 +149,8 @@ type state struct {
 	runtimePackage *loc.Locator
 	// apps lists collected application dependencies w/o duplicates
 	apps []loc.Locator
+
+	manifest schema.Manifest
 
 	visitedApps     map[string]struct{}
 	visitedPackages map[string]struct{}
