@@ -40,14 +40,17 @@ type SyncRequest struct {
 	AppService   app.Applications
 	ImageService docker.ImageService
 	Package      loc.Locator
-	Progress     utils.Printer
-	ScanConfig   *docker.ScanConfig
+	Progress     utils.Progress
+	Printer      utils.Printer
 }
 
 // CheckAndSetDefaults validates the request and sets some defaults.
 func (r *SyncRequest) CheckAndSetDefaults() error {
 	if r.Progress == nil {
-		r.Progress = utils.DiscardPrinter
+		r.Progress = utils.DiscardProgress
+	}
+	if r.Printer == nil {
+		r.Printer = utils.DiscardPrinter
 	}
 	return nil
 }
@@ -64,37 +67,53 @@ func SyncApp(ctx context.Context, req SyncRequest) error {
 		return trace.Wrap(err)
 	}
 
-	// sync base app
-	base := application.Manifest.Base()
-	if base != nil {
-		err = SyncApp(ctx, SyncRequest{
-			PackService:  req.PackService,
-			AppService:   req.AppService,
-			ImageService: req.ImageService,
-			Package:      *base,
-			Progress:     req.Progress,
-			ScanConfig:   req.ScanConfig,
-		})
-		if err != nil {
+	dependencies, err := app.GetDependencies(application, req.AppService)
+	if err != nil {
+		return trace.Wrap(err)
+	}
+
+	for _, dep := range dependencies.Apps {
+		req.Progress.NextStep("Exporting application %v:%v to the registry",
+			dep.Name, dep.Version)
+		req.Package = dep
+		if err := syncApp(ctx, req); err != nil {
 			return trace.Wrap(err)
 		}
 	}
 
-	// sync dependencies
-	for _, dep := range application.Manifest.Dependencies.Apps {
-		err = SyncApp(ctx, SyncRequest{
-			PackService:  req.PackService,
-			AppService:   req.AppService,
-			ImageService: req.ImageService,
-			Package:      dep.Locator,
-			Progress:     req.Progress,
-			ScanConfig:   req.ScanConfig,
-		})
-		if err != nil {
-			return trace.Wrap(err)
-		}
-	}
+	return nil
 
+	// // sync base app
+	// base := application.Manifest.Base()
+	// if base != nil {
+	// 	err = SyncApp(ctx, SyncRequest{
+	// 		PackService:  req.PackService,
+	// 		AppService:   req.AppService,
+	// 		ImageService: req.ImageService,
+	// 		Package:      *base,
+	// 		Progress:     req.Progress,
+	// 	})
+	// 	if err != nil {
+	// 		return trace.Wrap(err)
+	// 	}
+	// }
+
+	// // sync dependencies
+	// for _, dep := range application.Manifest.Dependencies.Apps {
+	// 	err = SyncApp(ctx, SyncRequest{
+	// 		PackService:  req.PackService,
+	// 		AppService:   req.AppService,
+	// 		ImageService: req.ImageService,
+	// 		Package:      dep.Locator,
+	// 		Progress:     req.Progress,
+	// 	})
+	// 	if err != nil {
+	// 		return trace.Wrap(err)
+	// 	}
+	// }
+}
+
+func syncApp(ctx context.Context, req SyncRequest) error {
 	// the app will be unpacked at this dir
 	dir, err := ioutil.TempDir("", "sync")
 	if err != nil {
@@ -136,7 +155,7 @@ func SyncApp(ctx context.Context, req SyncRequest) error {
 
 	log.Infof("Syncing %v.", req.Package)
 
-	if _, err = req.ImageService.Sync(ctx, syncPath, req.Progress); err != nil {
+	if _, err = req.ImageService.Sync(ctx, syncPath, req.Printer); err != nil {
 		return trace.Wrap(err)
 	}
 

@@ -18,7 +18,6 @@ package service
 
 import (
 	"context"
-	"io/ioutil"
 	"sync"
 	"time"
 
@@ -51,8 +50,6 @@ type PackagePullRequest struct {
 	Progress pack.ProgressReporter
 	// Upsert is whether to create or upsert the pulled package
 	Upsert bool
-	// MetadataOnly allows to pull only package metadata without body
-	MetadataOnly bool
 }
 
 // CheckAndSetDefaults checks the package pull request and sets some defaults
@@ -84,8 +81,6 @@ type AppPullRequest struct {
 	Progress pack.ProgressReporter
 	// Upsert is whether to create or upsert the application
 	Upsert bool
-	// MetadataOnly allows to pull only app metadata without body
-	MetadataOnly bool
 	// Parallel defines the number of tasks to run in parallel.
 	// If < 0, the number of tasks is unrestricted.
 	// If in [0,1], the tasks are executed sequentially.
@@ -103,16 +98,15 @@ func (r *AppPullRequest) CheckAndSetDefaults() error {
 // Clone returns a copy of this request replacing package with the provided one
 func (r *AppPullRequest) Clone(locator loc.Locator) AppPullRequest {
 	return AppPullRequest{
-		FieldLogger:  r.FieldLogger,
-		SrcPack:      r.SrcPack,
-		DstPack:      r.DstPack,
-		SrcApp:       r.SrcApp,
-		DstApp:       r.DstApp,
-		Package:      locator,
-		Upsert:       r.Upsert,
-		Progress:     r.Progress,
-		Parallel:     r.Parallel,
-		MetadataOnly: r.MetadataOnly,
+		FieldLogger: r.FieldLogger,
+		SrcPack:     r.SrcPack,
+		DstPack:     r.DstPack,
+		SrcApp:      r.SrcApp,
+		DstApp:      r.DstApp,
+		Package:     locator,
+		Upsert:      r.Upsert,
+		Progress:    r.Progress,
+		Parallel:    r.Parallel,
 	}
 }
 
@@ -128,13 +122,12 @@ func PullPackage(req PackagePullRequest) (*pack.PackageEnvelope, error) {
 func pullPackageHandler(loc loc.Locator, req AppPullRequest, state *pullState) func() error {
 	return func() error {
 		_, err := pullPackageWithRetries(PackagePullRequest{
-			FieldLogger:  req.FieldLogger,
-			SrcPack:      req.SrcPack,
-			DstPack:      req.DstPack,
-			Package:      loc,
-			Upsert:       req.Upsert,
-			Progress:     req.Progress,
-			MetadataOnly: req.MetadataOnly,
+			FieldLogger: req.FieldLogger,
+			SrcPack:     req.SrcPack,
+			DstPack:     req.DstPack,
+			Package:     loc,
+			Upsert:      req.Upsert,
+			Progress:    req.Progress,
 		}, state)
 		if !trace.IsAlreadyExists(err) {
 			return trace.Wrap(err)
@@ -179,13 +172,7 @@ func pullPackage(req PackagePullRequest) (*pack.PackageEnvelope, error) {
 	}
 
 	req.Infof("Pulling package %v.", req.Package)
-
-	reader := ioutil.NopCloser(utils.NopReader())
-	if req.MetadataOnly {
-		env, err = req.SrcPack.ReadPackageEnvelope(req.Package)
-	} else {
-		env, reader, err = req.SrcPack.ReadPackage(req.Package)
-	}
+	env, reader, err := req.SrcPack.ReadPackage(req.Package)
 	if err != nil {
 		return nil, trace.Wrap(err)
 	}
@@ -282,8 +269,13 @@ func pullApp(req AppPullRequest, state *pullState) (*app.Application, error) {
 		}
 	}
 
+	// then pull the app itself
+	return pullAppHandler(req)
+}
+
+func pullAppHandler(req AppPullRequest) (*app.Application, error) {
 	// see if the app itself already exists
-	application, err = req.DstApp.GetApp(req.Package)
+	application, err := req.DstApp.GetApp(req.Package)
 	if err != nil && !trace.IsNotFound(err) {
 		return nil, trace.Wrap(err)
 	}
@@ -302,13 +294,7 @@ func pullApp(req AppPullRequest, state *pullState) (*app.Application, error) {
 	req.Infof("Pulling application %v.", req.Package)
 
 	// pull the application itself
-	var env *pack.PackageEnvelope
-	reader := ioutil.NopCloser(utils.NopReader())
-	if req.MetadataOnly {
-		env, err = req.SrcPack.ReadPackageEnvelope(req.Package)
-	} else {
-		env, reader, err = req.SrcPack.ReadPackage(req.Package)
-	}
+	env, reader, err := req.SrcPack.ReadPackage(req.Package)
 	if err != nil {
 		return nil, trace.Wrap(err)
 	}
@@ -346,26 +332,30 @@ func pullAppDeps(req AppPullRequest, manifest schema.Manifest, state *pullState)
 		return trace.Wrap(err)
 	}
 
-	dependencies, err := app.GetDependencies()
+	dependencies, err := app.GetDependencies(&app.Application{
+		Manifest: manifest,
+		Package:  manifest.Locator(),
+	}, req.SrcApp)
 	if err != nil {
 		return trace.Wrap(err)
 	}
 
-	// pull base application if any
-	base := manifest.Base()
-	if base != nil {
-		_, err := pullAppWithRetries(req.Clone(*base), state)
-		if err != nil {
-			if !trace.IsAlreadyExists(err) {
-				return trace.Wrap(err)
-			}
-			req.Infof("Application %v already exists.", base)
-		}
-	}
+	// // pull base application if any
+	// base := manifest.Base()
+	// if base != nil {
+	// 	_, err := pullAppWithRetries(req.Clone(*base), state)
+	// 	if err != nil {
+	// 		if !trace.IsAlreadyExists(err) {
+	// 			return trace.Wrap(err)
+	// 		}
+	// 		req.Infof("Application %v already exists.", base)
+	// 	}
+	// }
 
 	// pull dependent packages
 	group, ctx := run.WithContext(context.TODO(), run.WithParallel(req.Parallel))
-	for _, dep := range manifest.AllPackageDependencies() {
+	//for _, dep := range manifest.AllPackageDependencies() {
+	for _, dep := range dependencies.Packages {
 		if state.pulled(dep) {
 			req.Infof("Package %v already pulled.", dep)
 			continue
@@ -377,8 +367,10 @@ func pullAppDeps(req AppPullRequest, manifest schema.Manifest, state *pullState)
 	}
 
 	// pull dependent applications
-	for _, dep := range manifest.Dependencies.GetApps() {
-		_, err := pullApp(req.Clone(dep), state)
+	// for _, dep := range manifest.Dependencies.GetApps() {
+	for _, dep := range dependencies.Apps {
+		// _, err := pullApp(req.Clone(dep), state)
+		_, err := pullAppHandler(req.Clone(dep))
 		if err != nil {
 			if !trace.IsAlreadyExists(err) {
 				return trace.Wrap(err)

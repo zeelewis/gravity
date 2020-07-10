@@ -115,7 +115,7 @@ func appSyncEnv(env *localenv.LocalEnvironment, imageEnv *localenv.ImageEnvironm
 				AppService:   imageEnv.Apps,
 				ImageService: imageService,
 				Package:      imageEnv.Manifest.Locator(),
-				Progress:     env,
+				Printer:      env,
 			})
 			if err != nil {
 				return trace.Wrap(err)
@@ -156,7 +156,7 @@ func appSyncEnv(env *localenv.LocalEnvironment, imageEnv *localenv.ImageEnvironm
 			AppService:   imageEnv.Apps,
 			ImageService: imageService,
 			Package:      imageEnv.Manifest.Locator(),
-			Progress:     env,
+			Printer:      env,
 		})
 		if err != nil {
 			return trace.Wrap(err)

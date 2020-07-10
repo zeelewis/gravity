@@ -89,7 +89,7 @@ type Dependencies struct {
 }
 
 func getDependencies(app *Application, apps Applications, state *state) error {
-	log.Infof("Getting dependencies for %v.", app.Package)
+	log.Infof("Collecting dependencies for %v.", app.Package)
 	packageDeps := loc.Deduplicate(append(
 		app.Manifest.Dependencies.GetPackages(),
 		app.Manifest.NodeProfiles.RuntimePackages()...))

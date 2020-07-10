@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 
 	"github.com/gravitational/gravity/lib/app"
+	"github.com/gravitational/gravity/lib/app/service"
 	"github.com/gravitational/gravity/lib/constants"
 	"github.com/gravitational/gravity/lib/defaults"
 	"github.com/gravitational/gravity/lib/docker"
@@ -94,29 +95,39 @@ type exportExecutor struct {
 
 // Execute executes the export phase
 func (p *exportExecutor) Execute(ctx context.Context) error {
-	app, err := p.Apps.GetApp(*p.Phase.Data.Package)
+	err := service.SyncApp(ctx, service.SyncRequest{
+		PackService:  p.Packages,
+		AppService:   p.Apps,
+		ImageService: p.ImageService,
+		Package:      *p.Phase.Data.Package,
+		Progress:     p.Progress,
+	})
 	if err != nil {
 		return trace.Wrap(err)
 	}
-	for _, dep := range app.Manifest.Dependencies.Apps {
-		err = p.unpackApp(dep.Locator)
-		if err != nil {
-			return trace.Wrap(err)
-		}
-		err = p.exportApp(ctx, dep.Locator)
-		if err != nil {
-			return trace.Wrap(err)
-		}
-	}
-	err = p.unpackApp(app.Package)
-	if err != nil {
-		return trace.Wrap(err)
-	}
-	err = p.exportApp(ctx, app.Package)
-	if err != nil {
-		return trace.Wrap(err)
-	}
-	p.Infof("Application %v exported.", app.Package)
+	// app, err := p.Apps.GetApp(*p.Phase.Data.Package)
+	// if err != nil {
+	// 	return trace.Wrap(err)
+	// }
+	// for _, dep := range app.Manifest.Dependencies.Apps {
+	// 	err = p.unpackApp(dep.Locator)
+	// 	if err != nil {
+	// 		return trace.Wrap(err)
+	// 	}
+	// 	err = p.exportApp(ctx, dep.Locator)
+	// 	if err != nil {
+	// 		return trace.Wrap(err)
+	// 	}
+	// }
+	// err = p.unpackApp(app.Package)
+	// if err != nil {
+	// 	return trace.Wrap(err)
+	// }
+	// err = p.exportApp(ctx, app.Package)
+	// if err != nil {
+	// 	return trace.Wrap(err)
+	// }
+	p.Infof("Application %v exported.", p.Phase.Data.Package)
 	return nil
 }
 

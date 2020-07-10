@@ -29,7 +29,6 @@ import (
 	"github.com/gravitational/gravity/lib/loc"
 	"github.com/gravitational/gravity/lib/pack"
 	"github.com/gravitational/gravity/lib/schema"
-	"github.com/gravitational/gravity/lib/utils"
 
 	dockerarchive "github.com/docker/docker/pkg/archive"
 	"github.com/gravitational/trace"
@@ -171,16 +170,16 @@ func PostProcessManifest(manifest *schema.Manifest) {
 		}
 		manifest.NodeProfiles[i].Labels = labels
 	}
-	// Remove disabled dependencies for user images.
-	if utils.StringInSlice([]string{schema.KindBundle, schema.KindCluster, schema.KindApplication}, manifest.Kind) {
-		var actualDependencies []schema.Dependency
-		for _, dep := range manifest.Dependencies.Apps {
-			if !schema.ShouldSkipApp(*manifest, dep.Locator) {
-				actualDependencies = append(actualDependencies, dep)
-			}
-		}
-		manifest.Dependencies.Apps = actualDependencies
-	}
+	// // Remove disabled dependencies for user images.
+	// if utils.StringInSlice([]string{schema.KindBundle, schema.KindCluster, schema.KindApplication}, manifest.Kind) {
+	// 	var actualDependencies []schema.Dependency
+	// 	for _, dep := range manifest.Dependencies.Apps {
+	// 		if !schema.ShouldSkipApp(*manifest, dep.Locator) {
+	// 			actualDependencies = append(actualDependencies, dep)
+	// 		}
+	// 	}
+	// 	manifest.Dependencies.Apps = actualDependencies
+	// }
 }
 
 // cleanup defines a type of handler that runs a cleanup task.
