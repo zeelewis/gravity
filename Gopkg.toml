@@ -126,6 +126,10 @@ ignored = [
   version = "1.15.5"
 
 [[override]]
+  name = "k8s.io/kubectl"
+  version = "0.17.9"
+
+[[override]]
   name = "k8s.io/cli-runtime"
   version = "kubernetes-1.15.5"
 

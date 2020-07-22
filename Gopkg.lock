@@ -1063,7 +1063,7 @@
 
 [[projects]]
   branch = "branch/3.2-g"
-  digest = "1:356657bce2d5038c787e84dde4d220d634384090bb9c950a80e4fc40505526f6"
+  digest = "1:32fabc3fcc923985f60d20d975617976fefaa78290f1f9aeb7381ab4dcc37160"
   name = "github.com/gravitational/teleport"
   packages = [
     ".",
@@ -2978,6 +2978,14 @@
   revision = "0317810137be915b9cf888946c6e115c1bfac693"
 
 [[projects]]
+  digest = "1:7384185c9f81927cf3c09171903ae3130d56827ca8097025bd7ab73a62c2cf05"
+  name = "k8s.io/kubectl"
+  packages = ["pkg/drain"]
+  pruneopts = "UT"
+  revision = "9bce8a539e8acdac47051db498ff9fdeb9246293"
+  version = "v0.17.9"
+
+[[projects]]
   digest = "1:d37af175787bb6bdf35b24c0cd225c833727facc5c61e6deea77c71236f8beea"
   name = "k8s.io/kubernetes"
   packages = [
@@ -3342,6 +3350,7 @@
     "k8s.io/apimachinery/pkg/util/net",
     "k8s.io/apimachinery/pkg/util/rand",
     "k8s.io/apimachinery/pkg/util/runtime",
+    "k8s.io/apimachinery/pkg/util/strategicpatch",
     "k8s.io/apimachinery/pkg/util/yaml",
     "k8s.io/apimachinery/pkg/version",
     "k8s.io/apimachinery/pkg/watch",
@@ -3377,6 +3386,7 @@
     "k8s.io/helm/pkg/version",
     "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1",
     "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1beta1",
+    "k8s.io/kubectl/pkg/drain",
     "k8s.io/kubernetes/pkg/kubelet/apis",
   ]
   solver-name = "gps-cdcl"
