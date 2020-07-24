@@ -9,7 +9,6 @@ require (
 	github.com/Masterminds/goutils v1.1.0 // indirect
 	github.com/Masterminds/semver v1.4.2 // indirect
 	github.com/Masterminds/sprig v2.22.0+incompatible // indirect
-	github.com/Microsoft/go-winio v0.4.11 // indirect
 	github.com/alecthomas/assert v0.0.0-20170929043011-405dbfeb8e38 // indirect
 	github.com/alecthomas/colour v0.1.0 // indirect
 	github.com/alecthomas/repr v0.0.0-20181024024818-d37bc2a10ba1 // indirect
@@ -30,10 +29,8 @@ require (
 	github.com/codahale/hdrhistogram v0.0.0-20161010025455-3a0bb77429bd
 	github.com/containerd/continuity v0.0.0-20200107194136-26c1120b8d41 // indirect
 	github.com/coreos/etcd v3.3.13+incompatible
-	github.com/coreos/go-oidc v0.0.0-20180117170138-065b426bd416 // indirect
 	github.com/coreos/go-semver v0.3.0
 	github.com/coreos/prometheus-operator v0.0.0-00010101000000-000000000000 // indirect
-	github.com/cyphar/filepath-securejoin v0.0.0-20170720062807-ae69057f2299 // indirect
 	github.com/davecgh/go-spew v1.1.1
 	github.com/docker/distribution v2.7.1+incompatible
 	github.com/docker/docker v1.4.2-0.20190327010347-be7ac8be2ae0
@@ -59,7 +56,6 @@ require (
 	github.com/google/gops v0.3.8 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 	github.com/gorilla/handlers v0.0.0-20151124211609-e96366d97736 // indirect
-	github.com/gorilla/mux v1.7.1 // indirect
 	github.com/gosimple/slug v1.9.0 // indirect
 	github.com/gravitational/bandwagon v0.0.0-20200215230242-8a67c7595376 // indirect
 	github.com/gravitational/configure v0.0.0-20191213111049-fce91dea0d0d
@@ -68,7 +64,6 @@ require (
 	github.com/gravitational/go-vhost v0.0.0-20171024163855-94d0c42e3263
 	github.com/gravitational/kingpin v2.1.11-0.20160205192003-785686550a08+incompatible // indirect
 	github.com/gravitational/license v0.0.0-20171013193735-f3111b1818ce
-	github.com/gravitational/log v0.0.0-20200127200505-fdffa14162b0 // indirect
 	github.com/gravitational/oxy v0.0.0-20180629203109-e4a7e35311e6 // indirect
 	github.com/gravitational/rigging v0.0.0-20191021212636-83b2e9505286
 	github.com/gravitational/roundtrip v1.0.0
@@ -81,23 +76,17 @@ require (
 	github.com/gravitational/vfsgen v0.0.0-20181202132449-6a9ea43bcacd
 	github.com/hashicorp/go-getter v0.0.0-20180809191950-4bda8fa99001 // indirect
 	github.com/hashicorp/go-hclog v0.0.0-20180828044259-75ecd6e6d645 // indirect
-	github.com/hashicorp/go-immutable-radix v1.1.0 // indirect
-	github.com/hashicorp/go-msgpack v0.5.5 // indirect
 	github.com/hashicorp/go-plugin v0.0.0-20180814222501-a4620f9913d1 // indirect
 	github.com/hashicorp/go-safetemp v1.0.0 // indirect
 	github.com/hashicorp/hcl2 v0.0.0-20180822193130-ed8144cda141 // indirect
 	github.com/hashicorp/hil v0.0.0-20170627220502-fa9f258a9250 // indirect
-	github.com/hashicorp/serf v0.8.3 // indirect
 	github.com/hashicorp/terraform v0.11.7 // indirect
 	github.com/hashicorp/yamux v0.0.0-20180826203732-cc6d2ea263b2 // indirect
 	github.com/huandu/xstrings v1.2.0 // indirect
-	github.com/jmoiron/sqlx v1.2.0 // indirect
 	github.com/jonboulle/clockwork v0.2.0
-	github.com/json-iterator/go v1.1.6 // indirect
 	github.com/julienschmidt/httprouter v1.2.0
 	github.com/kardianos/osext v0.0.0-20170510131534-ae77be60afb1
 	github.com/konsorten/go-windows-terminal-sequences v1.0.3 // indirect
-	github.com/kr/pty v1.1.5 // indirect
 	github.com/kylelemons/godebug v0.0.0-20170820004349-d65d576e9348
 	github.com/lib/pq v1.2.0 // indirect
 	github.com/magefile/mage v1.10.0 // indirect
@@ -108,7 +97,6 @@ require (
 	github.com/mailgun/timetools v0.0.0-20150505213551-fd192d755b00
 	github.com/mailgun/ttlmap v0.0.0-20150816203249-16b258d86efc // indirect
 	github.com/maruel/panicparse v1.1.2-0.20180806203336-f20d4c4d746f // indirect
-	github.com/mattn/go-sqlite3 v1.13.0 // indirect
 	github.com/mdp/rsc v0.0.0-20160131164516-90f07065088d // indirect
 	github.com/miekg/dns v1.1.26
 	github.com/mitchellh/copystructure v1.0.0 // indirect
@@ -150,7 +138,6 @@ require (
 	golang.org/x/crypto v0.0.0-20200709230013-948cd5f35899
 	golang.org/x/net v0.0.0-20200707034311-ab3426394381
 	golang.org/x/sys v0.0.0-20200625212154-ddb9806d33ae
-	golang.org/x/text v0.3.2 // indirect
 	gonum.org/v1/gonum v0.6.1 // indirect
 	google.golang.org/grpc v1.26.0
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
