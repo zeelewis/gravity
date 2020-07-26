@@ -30,6 +30,7 @@ import (
 	"github.com/gravitational/gravity/tool/common"
 
 	"github.com/buger/goterm"
+	"github.com/fatih/color"
 	teleutils "github.com/gravitational/teleport/lib/utils"
 	"github.com/gravitational/trace"
 )
@@ -195,10 +196,18 @@ func diffImages(oldImage, newImage *builder.InspectResponse) {
 		oldTags, isOld := oldImages[image]
 		newTags, isNew := newImages[image]
 		if isOld && isNew {
+			for i, newTag := range newTags {
+				if !utils.StringInSlice(oldTags, newTag) {
+					newTags[i] = color.New(color.Bold, color.FgGreen).Sprint(newTag)
+				}
+			}
 			fmt.Fprintf(t, "%v\t%v\t%v\n", image, strings.Join(oldTags, ", "), strings.Join(newTags, ", "))
 		} else if isOld {
 			fmt.Fprintf(t, "%v\t%v\t%v\n", image, strings.Join(oldTags, ", "), "")
 		} else {
+			for i, newTag := range newTags {
+				newTags[i] = color.New(color.Bold, color.FgGreen).Sprint(newTag)
+			}
 			fmt.Fprintf(t, "%v\t%v\t%v\n", image, "", strings.Join(newTags, ", "))
 		}
 	}
