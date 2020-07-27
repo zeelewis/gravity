@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -88,7 +89,13 @@ func Pull(ctx context.Context, req PullRequest) error {
 
 	resolver := newResolver("", "", true, true)
 
-	fileStore := content.NewFileStore("")
+	tempDir, err := ioutil.TempDir("", "oras-pull")
+	if err != nil {
+		return trace.Wrap(err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	fileStore := content.NewFileStore(tempDir)
 	defer fileStore.Close()
 
 	allowedMediaTypes := []string{mediaType}
@@ -108,7 +115,12 @@ func Pull(ctx context.Context, req PullRequest) error {
 		}
 	}
 
-	req.Progress.NextStep("Downloaded from %v into %v with digest %s", req.Reference, name, desc.Digest)
+	err = os.Rename(filepath.Join(tempDir, name), req.Path)
+	if err != nil {
+		return trace.Wrap(err)
+	}
+
+	req.Progress.NextStep("Downloaded from %v into %v with digest %s", req.Reference, req.Path, desc.Digest)
 	return nil
 }
 

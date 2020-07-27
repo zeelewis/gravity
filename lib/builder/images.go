@@ -21,7 +21,9 @@ import (
 // we can modify the build procedure to save a list of embedded images somewhere,
 // and fall back to unpacking image for older images.
 func GetImages(ctx context.Context, imagePath string) (*InspectResponse, error) {
-	env, err := localenv.NewImageEnvironment(imagePath)
+	env, err := localenv.NewImageEnvironment(localenv.ImageEnvironmentConfig{
+		Path: imagePath,
+	})
 	if err != nil {
 		return nil, trace.Wrap(err)
 	}

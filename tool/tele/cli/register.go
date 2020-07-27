@@ -35,7 +35,7 @@ func RegisterCommands(app *kingpin.Application) Application {
 
 	tele.Debug = app.Flag("debug", "Enable debug mode.").Bool()
 	tele.Insecure = app.Flag("insecure", "Skip TLS verification when making HTTP requests.").Default("false").Bool()
-	tele.StateDir = app.Flag("state-dir", "The build cache directory to speed up subsequent builds. Defaults to ~/.gravity.").String()
+	tele.StateDir = app.Flag("state-dir", "The build cache directory to speed up subsequent builds. Defaults to ~/.gravity.").OverrideDefaultFromEnvar("TELE_STATE_DIR").String()
 
 	tele.VersionCmd.CmdClause = app.Command("version", "Print version information and exit.")
 	tele.VersionCmd.Output = common.Format(tele.VersionCmd.Flag("output", "Output format: text or json.").Short('o').Default(string(constants.EncodingText)))

@@ -17,12 +17,17 @@ limitations under the License.
 package localenv
 
 import (
+	"context"
+	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/gravitational/gravity/lib/archive"
 	"github.com/gravitational/gravity/lib/defaults"
+	"github.com/gravitational/gravity/lib/oras"
 	"github.com/gravitational/gravity/lib/schema"
+	"github.com/gravitational/gravity/lib/utils"
 
 	"github.com/gravitational/trace"
 )
@@ -38,15 +43,58 @@ type ImageEnvironment struct {
 	cleanup func()
 }
 
+type ImageEnvironmentConfig struct {
+	Path     string
+	Progress utils.Progress
+}
+
+func (c *ImageEnvironmentConfig) CheckAndSetDefaults(ctx context.Context) error {
+	if c.Progress == nil {
+		c.Progress = utils.NewProgressWithConfig(ctx, "",
+			utils.ProgressConfig{
+				StepPrinter: utils.TimestampedStepPrinter,
+			})
+	}
+	return nil
+}
+
 // NewImageEnvironment returns a new environment for a specified application
 // or cluster image.
 //
 // The path can be either an image tarball or an unpacked image tarball.
-func NewImageEnvironment(path string) (*ImageEnvironment, error) {
+func NewImageEnvironment(config ImageEnvironmentConfig) (*ImageEnvironment, error) {
+	if err := config.CheckAndSetDefaults(context.TODO()); err != nil {
+		return nil, trace.Wrap(err)
+	}
+
+	path := config.Path
+
+	// see if the path is a registry
+	if strings.Contains(path, ":") {
+		tempDir, err := ioutil.TempDir("", "image-env")
+		if err != nil {
+			return nil, trace.Wrap(err)
+		}
+		defer os.RemoveAll(tempDir)
+
+		tempPath := filepath.Join(tempDir, "image.tar")
+
+		err = oras.Pull(context.TODO(), oras.PullRequest{
+			Reference: path,
+			Path:      tempPath,
+		})
+		if err != nil {
+			return nil, trace.Wrap(err)
+		}
+
+		path = tempPath
+	}
+
 	fi, err := os.Stat(path)
 	if err != nil {
 		return nil, trace.Wrap(err)
 	}
+
 	// see if it's a path to unpacked image tarball or a tarball
 	if fi.IsDir() {
 		// see if app.yaml is there
@@ -66,6 +114,9 @@ func NewImageEnvironment(path string) (*ImageEnvironment, error) {
 		return nil, trace.BadParameter("file %q does not appear to be "+
 			"a valid application or cluster image", path)
 	}
+
+	config.Progress.NextStep("Unpacking image %v...", path)
+
 	// extract tarball to a temporary directory
 	unpackedPath, err := archive.Unpack(path)
 	if err != nil {
