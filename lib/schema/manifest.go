@@ -350,7 +350,8 @@ func (m Manifest) RuntimeImages() (images []string) {
 	return images
 }
 
-// AllPackageDependencies returns the list of all available package dependencies
+// AllPackageDependencies returns the list of all package dependencies including
+// the default planet package
 func (m Manifest) AllPackageDependencies() (deps []loc.Locator) {
 	if m.SystemOptions != nil && m.SystemOptions.Dependencies.Runtime != nil {
 		deps = append(deps, m.SystemOptions.Dependencies.Runtime.Locator)
@@ -472,10 +473,14 @@ func (d Dependencies) ByName(names ...string) (*loc.Locator, error) {
 	return nil, trace.NotFound("dependencies %q are not defined in the manifest", names)
 }
 
-// GetPackages returns a list of all package dependencies
+// GetPackages returns the list of package dependencies excluding the planet
+// package as it is computed outside of the dependencies list
 func (d Dependencies) GetPackages() []loc.Locator {
-	packages := make([]loc.Locator, 0, len(d.Apps))
+	packages := make([]loc.Locator, 0, len(d.Packages))
 	for _, dep := range d.Packages {
+		if loc.IsPlanetPackage(dep.Locator) {
+			continue
+		}
 		packages = append(packages, dep.Locator)
 	}
 	return packages
