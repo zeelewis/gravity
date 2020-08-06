@@ -45,7 +45,7 @@ TELEPORT_TAG = 3.0.5
 # TELEPORT_REPOTAG adapts TELEPORT_TAG to the teleport tagging scheme
 TELEPORT_REPOTAG := v$(TELEPORT_TAG)
 PLANET_TAG := 5.5.56-$(K8S_VER_SUFFIX)-dev.1
-PLANET_BRANCH := sergei/wait_for_etcd_fix_55x
+PLANET_BRANCH := sergei/etcd_shutdown_ppid_55x
 K8S_APP_TAG := $(GRAVITY_TAG)
 TELEKUBE_APP_TAG := $(GRAVITY_TAG)
 WORMHOLE_APP_TAG := $(GRAVITY_TAG)
