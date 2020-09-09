@@ -905,12 +905,6 @@ func (s *site) getPlanetConfig(config planetConfig) (args []string, err error) {
 		"pod-subnet":     config.installExpand.InstallExpand.Subnets.Overlay,
 	}
 
-	if config.master.electionEnabled {
-		args = append(args, "--election-enabled")
-	} else {
-		args = append(args, "--no-election-enabled")
-	}
-
 	for k, v := range config.env {
 		args = append(args, fmt.Sprintf("--env=%v=%v", k, strconv.Quote(v)))
 	}

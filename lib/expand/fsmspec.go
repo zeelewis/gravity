@@ -116,10 +116,6 @@ func FSMSpec(config FSMConfig) fsm.FSMSpecFunc {
 				config.Apps,
 				schema.HookNodeAdded)
 
-		case strings.HasPrefix(p.Phase.ID, ElectPhase):
-			return phases.NewElect(p,
-				config.Operator)
-
 		default:
 			return nil, trace.BadParameter("unknown phase %q", p.Phase.ID)
 		}
@@ -145,8 +141,6 @@ const (
 	WaitTeleportPhase = "/wait/teleport"
 	// PostHookPhase runs post-expand application hook
 	PostHookPhase = "/postHook"
-	// ElectPhase enables leader election on master node
-	ElectPhase = "/elect"
 	// StartAgentPhase starts RPC agent
 	StartAgentPhase = "/startAgent"
 	// StopAgentPhase stops RPC agent

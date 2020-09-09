@@ -122,9 +122,6 @@ func (r *Planner) GetOperationPlan(operator ops.Operator, cluster ops.Site, oper
 		return nil, trace.Wrap(err)
 	}
 
-	// re-enable planet leader elections
-	builder.AddEnableElectionPhase(plan)
-
 	// Add a phase to create optional Gravity resources upon successful installation
 	builder.AddGravityResourcesPhase(plan)
 

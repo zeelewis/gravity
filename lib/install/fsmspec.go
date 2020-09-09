@@ -90,9 +90,6 @@ func DefaultFSMSpec(config FSMConfig) fsm.FSMSpecFunc {
 				config.Operator,
 				config.LocalApps)
 
-		case strings.HasPrefix(p.Phase.ID, phases.EnableElectionPhase):
-			return phases.NewEnableElectionPhase(p, config.Operator)
-
 		case strings.HasPrefix(p.Phase.ID, phases.InstallOverlayPhase):
 			return phases.NewHook(p,
 				config.Operator,

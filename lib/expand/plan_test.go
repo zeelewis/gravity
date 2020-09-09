@@ -220,7 +220,6 @@ func (s *PlanSuite) TestPlan(c *check.C) {
 		{installphases.WaitPhase, s.verifyWaitPhase},
 		{StopAgentPhase, s.verifyStopAgentPhase},
 		{PostHookPhase, s.verifyPostHookPhase},
-		{ElectPhase, s.verifyElectPhase},
 	}
 
 	c.Assert(len(expected), check.Equals, len(plan.Phases))
@@ -426,17 +425,6 @@ func (s *PlanSuite) verifyPostHookPhase(c *check.C, phase storage.OperationPhase
 			ExecServer:  &s.joiningNode,
 			Package:     &s.appPackage,
 			ServiceUser: &s.serviceUser,
-		},
-		Requires: []string{installphases.WaitPhase},
-	}, phase)
-}
-
-func (s *PlanSuite) verifyElectPhase(c *check.C, phase storage.OperationPhase) {
-	storage.DeepComparePhases(c, storage.OperationPhase{
-		ID: ElectPhase,
-		Data: &storage.OperationPhaseData{
-			Server:     &s.joiningNode,
-			ExecServer: &s.joiningNode,
 		},
 		Requires: []string{installphases.WaitPhase},
 	}, phase)

@@ -496,8 +496,7 @@ func (b *PlanBuilder) AddGravityResourcesPhase(plan *storage.OperationPlan) {
 				GravityResources: b.gravityResources,
 			},
 		},
-		Requires: []string{phases.EnableElectionPhase},
-		Step:     10,
+		Step: 10,
 	})
 }
 
@@ -639,19 +638,6 @@ func (b *PlanBuilder) AddConnectInstallerPhase(plan *storage.OperationPlan) erro
 		Step:     8,
 	})
 	return nil
-}
-
-// AddEnableElectionPhase appends leader election enabling phase to the provided plan
-func (b *PlanBuilder) AddEnableElectionPhase(plan *storage.OperationPlan) {
-	plan.Phases = append(plan.Phases, storage.OperationPhase{
-		ID:          phases.EnableElectionPhase,
-		Description: "Enable cluster leader elections",
-		Requires:    []string{phases.AppPhase},
-		Data: &storage.OperationPhaseData{
-			Server: &b.Master,
-		},
-		Step: 9,
-	})
 }
 
 // skipDependency returns true if the dependency package specified by dep
