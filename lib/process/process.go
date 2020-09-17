@@ -2337,7 +2337,7 @@ func initSelfSignedHTTPSCert(cfg *service.Config, hostname string) (err error) {
 	if hostname != "" {
 		hosts = append(hosts, hostname)
 	}
-	creds, err := teleutils.GenerateSelfSignedCert(hosts)
+	creds, err := GenerateSelfSignedCert(hosts)
 	if err != nil {
 		return trace.Wrap(err)
 	}
