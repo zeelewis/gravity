@@ -19,6 +19,7 @@ package phases
 import (
 	"github.com/gravitational/gravity/lib/app"
 	"github.com/gravitational/gravity/lib/loc"
+	"github.com/gravitational/gravity/lib/ops"
 )
 
 const (
@@ -27,9 +28,6 @@ const (
 	// RestartContainer defines the phase to restart runtime container to make the
 	// configuration package effective
 	RestartContainer = "restart"
-	// Elections defines the phase to control election / leadership on
-	// a set of nodes
-	Elections = "elections"
 	// Taint defines the phase to add a taint to a node
 	Taint = "taint"
 	// Untaint defines the phase to remove the previously added taint from a node
@@ -41,6 +39,12 @@ const (
 	// Endpoints defines the phase to wait for endpoints on a node to be become active
 	Endpoints = "endpoints"
 )
+
+// LocalClusterGetter fetches data on local cluster
+type LocalClusterGetter interface {
+	// GetLocalSite returns the data record for the local cluster
+	GetLocalSite() (*ops.Site, error)
+}
 
 type appGetter interface {
 	GetApp(loc.Locator) (*app.Application, error)

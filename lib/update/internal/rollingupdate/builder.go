@@ -82,21 +82,11 @@ func (r Builder) Masters(servers []storage.UpdateServer, rootText, nodeTextForma
 	first, others := servers[0], servers[1:]
 
 	node := r.node(first.Hostname, nodeTextFormat, first.Hostname)
-	if len(others) != 0 {
-		node.AddSequential(setLeaderElection(enable(), disable(first), first,
-			"stepdown", "Step down %q as Kubernetes leader"))
-	}
 	node.AddSequential(r.common(first, nil)...)
-	if len(others) != 0 {
-		node.AddSequential(setLeaderElection(enable(first), disable(others...), first,
-			"elect", "Make node %q Kubernetes leader"))
-	}
 	root.AddSequential(node)
 	for i, server := range others {
 		node := r.node(server.Hostname, nodeTextFormat, server.Hostname)
 		node.AddSequential(r.common(others[i], nil)...)
-		node.AddSequential(setLeaderElection(enable(server), disable(), server,
-			"enable-elections", "Enable leader election on node %q"))
 		root.AddSequential(node)
 	}
 	return &root
@@ -212,27 +202,6 @@ func (r Builder) node(id, format string, args ...interface{}) update.Phase {
 type Builder struct {
 	// App specifies the cluster application
 	App loc.Locator
-}
-
-// setLeaderElection creates a phase that will change the leader election state in the cluster
-// enable - the list of servers to enable election on
-// disable - the list of servers to disable election on
-// server - The server the phase should be executed on, and used to name the phase
-// key - is the identifier of the phase (combined with server.Hostname)
-// msg - is a format string used to describe the phase
-func setLeaderElection(enable, disable []storage.Server, server storage.UpdateServer, id, format string) update.Phase {
-	return update.Phase{
-		ID:          id,
-		Executor:    libphase.Elections,
-		Description: fmt.Sprintf(format, server.Hostname),
-		Data: &storage.OperationPhaseData{
-			Server: &server.Server,
-			ElectionChange: &storage.ElectionChange{
-				EnableServers:  enable,
-				DisableServers: disable,
-			},
-		},
-	}
 }
 
 func servers(updates ...storage.UpdateServer) (result []storage.Server) {

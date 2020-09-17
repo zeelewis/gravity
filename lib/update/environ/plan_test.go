@@ -288,17 +288,6 @@ func (S) TestMultiNodePlan(c *C) {
 						Description: `Update runtime environment on node "node-1"`,
 						Phases: []storage.OperationPhase{
 							{
-								ID:          "/masters/node-1/stepdown",
-								Executor:    libphase.Elections,
-								Description: `Step down "node-1" as Kubernetes leader`,
-								Data: &storage.OperationPhaseData{
-									Server: &servers[0],
-									ElectionChange: &storage.ElectionChange{
-										DisableServers: []storage.Server{servers[0]},
-									},
-								},
-							},
-							{
 								ID:          "/masters/node-1/drain",
 								Executor:    libphase.Drain,
 								Description: `Drain node "node-1"`,
@@ -367,19 +356,6 @@ func (S) TestMultiNodePlan(c *C) {
 									Server: &servers[0],
 								},
 								Requires: []string{"/masters/node-1/endpoints"},
-							},
-							{
-								ID:          "/masters/node-1/elect",
-								Executor:    libphase.Elections,
-								Description: `Make node "node-1" Kubernetes leader`,
-								Data: &storage.OperationPhaseData{
-									Server: &servers[0],
-									ElectionChange: &storage.ElectionChange{
-										EnableServers:  []storage.Server{servers[0]},
-										DisableServers: []storage.Server{servers[2]},
-									},
-								},
-								Requires: []string{"/masters/node-1/untaint"},
 							},
 						},
 					},
@@ -454,18 +430,6 @@ func (S) TestMultiNodePlan(c *C) {
 									Server: &servers[2],
 								},
 								Requires: []string{"/masters/node-3/endpoints"},
-							},
-							{
-								ID:          "/masters/node-3/enable-elections",
-								Executor:    libphase.Elections,
-								Description: `Enable leader election on node "node-3"`,
-								Data: &storage.OperationPhaseData{
-									Server: &servers[2],
-									ElectionChange: &storage.ElectionChange{
-										EnableServers: []storage.Server{servers[2]},
-									},
-								},
-								Requires: []string{"/masters/node-3/untaint"},
 							},
 						},
 						Requires: []string{"/masters/node-1"},

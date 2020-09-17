@@ -39,8 +39,6 @@ func (r *dispatcher) Dispatch(config Config, params fsm.ExecutorParams, remote f
 			config.Apps, config.LocalBackend,
 			config.ClusterPackages, config.HostLocalPackages,
 			logger)
-	case libphase.Elections:
-		return libphase.NewElections(params, config.Operator, logger)
 	case libphase.Drain:
 		return libphase.NewDrain(params, config.Client, logger)
 	case libphase.Taint:

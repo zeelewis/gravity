@@ -44,8 +44,6 @@ const (
 	coredns = "coredns"
 	// updateApp is the phase to update the application
 	updateApp = "update_app"
-	// electionStatus is the phase to control node leader elections
-	electionStatus = "election_status"
 	// taintNode is the phase to taint a node
 	taintNode = "taint_node"
 	// nodeHealth is the phase to check if the node is healthy within satellite
@@ -131,8 +129,6 @@ func fsmSpec(c Config) fsm.FSMSpecFunc {
 			return libphase.NewUpdatePhaseBeforeApp(p, c.Apps, c.Client, logger)
 		case updateApp:
 			return libphase.NewUpdatePhaseApp(p, c.Operator, c.Apps, c.Client, logger)
-		case electionStatus:
-			return libphase.NewPhaseElectionChange(p, c.Operator, remote, logger)
 		case taintNode:
 			return libphase.NewPhaseTaint(p, c.Client, logger)
 		case untaintNode:

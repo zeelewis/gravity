@@ -1281,7 +1281,7 @@ var (
 	TeleportVersion = semver.New(TeleportVersionString)
 
 	// DockerRegistry is a default name for private docker registry
-	DockerRegistry = DockerRegistryAddr(constants.APIServerDomainName)
+	DockerRegistry = DockerRegistryAddr(constants.RegistryDomainName)
 
 	// NetworkIntefacePrefixes is a list of Kubernetes-specific network interface prefixes.
 	NetworkInterfacePrefixes = []string{
