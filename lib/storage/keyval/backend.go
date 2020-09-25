@@ -17,8 +17,11 @@ limitations under the License.
 package keyval
 
 import (
+	"bytes"
+	"compress/gzip"
 	"encoding/base64"
 	"encoding/json"
+	"io"
 	"sync"
 	"time"
 
@@ -74,6 +77,11 @@ type v1codec struct {
 }
 
 func (*v1codec) EncodeBytesToString(data []byte) (string, error) {
+	data, err := compress(data)
+	if err != nil {
+		return "", trace.Wrap(err)
+	}
+
 	return base64.StdEncoding.EncodeToString(data), nil
 }
 
@@ -82,6 +90,12 @@ func (*v1codec) EncodeToString(val interface{}) (string, error) {
 	if err != nil {
 		return "", trace.Wrap(err, "failed to encode object")
 	}
+
+	data, err = compress(data)
+	if err != nil {
+		return "", trace.Wrap(err)
+	}
+
 	return base64.StdEncoding.EncodeToString(data), nil
 }
 
@@ -90,6 +104,12 @@ func (*v1codec) EncodeToBytes(val interface{}) ([]byte, error) {
 	if err != nil {
 		return nil, trace.Wrap(err, "failed to encode object")
 	}
+
+	data, err = compress(data)
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+
 	return data, nil
 }
 
@@ -98,6 +118,12 @@ func (*v1codec) DecodeBytesFromString(val string) ([]byte, error) {
 	if err != nil {
 		return nil, trace.Wrap(err, "failed to decode object")
 	}
+
+	data, err = decompress(data)
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+
 	return data, nil
 }
 
@@ -106,6 +132,12 @@ func (*v1codec) DecodeFromString(val string, in interface{}) error {
 	if err != nil {
 		return trace.Wrap(err, "failed to decode object")
 	}
+
+	data, err = decompress(data)
+	if err != nil {
+		return trace.Wrap(err)
+	}
+
 	err = json.Unmarshal([]byte(data), &in)
 	if err != nil {
 		log.Errorf("failed to decode: %s", data)
@@ -115,10 +147,72 @@ func (*v1codec) DecodeFromString(val string, in interface{}) error {
 }
 
 func (*v1codec) DecodeFromBytes(data []byte, in interface{}) error {
-	err := json.Unmarshal(data, &in)
+	data, err := decompress(data)
+	if err != nil {
+		return trace.Wrap(err)
+	}
+
+	err = json.Unmarshal(data, &in)
 	if err != nil {
 		log.Errorf("failed to decode: %s", data)
 		return trace.Wrap(err)
 	}
 	return nil
+}
+
+// compress will gzip compress the input data if the slice is above a threshold. Data below the threshold will
+// be returned without modification.
+func compress(in []byte) ([]byte, error) {
+	// We only compress data above 6Mb
+	// The maximum data we can post to etcdv2 is 10Mb, so we need to compress any large objects
+	const compressAbove = 1024 * 1024 * 6
+	if len(in) < compressAbove {
+		return in, nil
+	}
+
+	var buf bytes.Buffer
+	gz := gzip.NewWriter(&buf)
+
+	_, err := gz.Write(in)
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+
+	if err := gz.Close(); err != nil {
+		return nil, trace.Wrap(err)
+	}
+
+	return buf.Bytes(), nil
+}
+
+// decompress will detect and decompress gzip encoded bytes. If the data is not compressed, it will be returned as is.
+func decompress(in []byte) ([]byte, error) {
+	const gzHeaderLength = 10
+	if len(in) < gzHeaderLength {
+		return in, nil
+	}
+
+	// gzip magic number is 0x1f8b, so if this isn't gzip data, just return it as is
+	if in[0] != 0x1f || in[1] == 0x8b {
+		return in, nil
+	}
+
+	gz, err := gzip.NewReader(bytes.NewReader(in))
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+
+	var buf bytes.Buffer
+
+	// We only decompress data we've stored in the DB
+	/* #nosec */
+	if _, err := io.Copy(&buf, gz); err != nil {
+		return nil, trace.Wrap(err)
+	}
+
+	if err := gz.Close(); err != nil {
+		return nil, trace.Wrap(err)
+	}
+
+	return buf.Bytes(), nil
 }
