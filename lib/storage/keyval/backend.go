@@ -21,7 +21,7 @@ import (
 	"compress/gzip"
 	"encoding/base64"
 	"encoding/json"
-	"io"
+	"io/ioutil"
 	"sync"
 	"time"
 
@@ -202,11 +202,10 @@ func decompress(in []byte) ([]byte, error) {
 		return nil, trace.Wrap(err)
 	}
 
-	var buf bytes.Buffer
-
 	// We only decompress data we've stored in the DB
 	/* #nosec */
-	if _, err := io.Copy(&buf, gz); err != nil {
+	buf, err := ioutil.ReadAll(gz)
+	if err != nil {
 		return nil, trace.Wrap(err)
 	}
 
@@ -214,5 +213,5 @@ func decompress(in []byte) ([]byte, error) {
 		return nil, trace.Wrap(err)
 	}
 
-	return buf.Bytes(), nil
+	return buf, nil
 }
