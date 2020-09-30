@@ -10,6 +10,7 @@
 * Breaking change (fix or feature that would cause existing functionality to not work as expected)
 * Internal change (not necessarily a bug fix or a new feature)
 * This change has a user-facing impact
+* This change may impact performance at scale
 
 ## Linked tickets and other PRs
 <!--Required. Keep only those that apply.-->
@@ -29,6 +30,7 @@
 - [ ] Perform manual testing
 - [ ] Write documentation
 - [ ] Address review feedback
+
 
 ## Implementation
 <!--Optional. Add any relevant implementation details that might help the reviewers.-->
