@@ -1,5 +1,5 @@
 /*
-Copyright 2018 Gravitational, Inc.
+Copyright 2018-2020 Gravitational, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -28,6 +28,7 @@ import (
 	"github.com/gravitational/gravity/lib/storage"
 	"github.com/gravitational/trace"
 	"github.com/jonboulle/clockwork"
+	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -160,12 +161,16 @@ func (*v1codec) DecodeFromBytes(data []byte, in interface{}) error {
 	return nil
 }
 
+// compressAbove is the threshold used to determine when we compress objects to the backend
+// The maximum data we can post to etcdv2 is 10Mb, so we need to compress any large objects
+const compressAbove = 1024 * 1024 * 6
+
+// gzHeaderLength is the number of bytes required for gzip compression
+const gzHeaderLength = 10
+
 // compress will gzip compress the input data if the slice is above a threshold. Data below the threshold will
 // be returned without modification.
 func compress(in []byte) ([]byte, error) {
-	// We only compress data above 6Mb
-	// The maximum data we can post to etcdv2 is 10Mb, so we need to compress any large objects
-	const compressAbove = 1024 * 1024 * 6
 	if len(in) < compressAbove {
 		return in, nil
 	}
@@ -187,13 +192,15 @@ func compress(in []byte) ([]byte, error) {
 
 // decompress will detect and decompress gzip encoded bytes. If the data is not compressed, it will be returned as is.
 func decompress(in []byte) ([]byte, error) {
-	const gzHeaderLength = 10
+
 	if len(in) < gzHeaderLength {
 		return in, nil
 	}
 
+	logrus.Infof("%x %x", in[0], in[1])
+
 	// gzip magic number is 0x1f8b, so if this isn't gzip data, just return it as is
-	if in[0] != 0x1f || in[1] == 0x8b {
+	if in[0] != 0x1f || in[1] != 0x8b {
 		return in, nil
 	}
 
