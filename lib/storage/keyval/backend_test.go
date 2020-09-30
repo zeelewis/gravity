@@ -24,28 +24,43 @@ import (
 
 func TestCompressDecompress(t *testing.T) {
 	tt := []struct {
-		description string
-		size        int
+		description       string
+		size              int
+		alreadyCompressed bool
 	}{
 		{
 			description: "smaller than gz header",
 			size:        1,
 		},
 		{
-			description: "uncompressed",
+			description: "small object",
 			size:        25,
 		},
 		{
-			description: "compress",
+			description: "large object",
 			size:        compressAbove + 100,
+		},
+		{
+			description:       "already compressed",
+			size:              compressAbove + 100,
+			alreadyCompressed: true,
 		},
 	}
 
 	for _, test := range tt {
 		// test compression
 		in := make([]byte, test.size)
+		if test.alreadyCompressed {
+			// compress the input data to simulate an already compressed object from an upper layer
+			in, _ = compress(in)
+		}
+
 		res, err := compress(in)
 		assert.NoError(t, err, test.description)
+
+		if test.alreadyCompressed {
+			assert.Equal(t, []byte{0x1f, 0x8c}, res[0:2])
+		}
 
 		out, err := decompress(res)
 		assert.NoError(t, err, test.description)
