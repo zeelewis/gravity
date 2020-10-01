@@ -129,7 +129,7 @@ func (r *AutomaticLifecycle) generateDebugReport(ctx context.Context, c *Client)
 	err := c.generateDebugReport(clusterCtx, r.DebugReportPath)
 	if err != nil {
 		if r.LocalDebugReporter != nil {
-			err = r.LocalDebugReporter(ctx, r.DebugReportPath)
+			err = r.LocalDebugReporter(clusterCtx, r.DebugReportPath)
 		}
 	}
 	return trace.Wrap(err)
