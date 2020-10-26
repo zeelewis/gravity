@@ -145,8 +145,12 @@ func (s *systemdManager) installService(service serviceTemplate, req NewServiceR
 		}
 	}
 
-	if err := s.EnableService(req.Name); err != nil {
-		return trace.Wrap(err, "error enabling the service")
+	// Systemd symlinks /etc/systemd/system for enable/disable of services, so if the unit file is installed
+	// directly into this location, we need to skip the enable service and just start the service.
+	if !strings.HasPrefix(unitPath(req.Name), defaults.SystemUnitDir) {
+		if err := s.EnableService(req.Name); err != nil {
+			return trace.Wrap(err, "error enabling the service")
+		}
 	}
 
 	if err := s.StartService(service.Name, req.NoBlock); err != nil {
