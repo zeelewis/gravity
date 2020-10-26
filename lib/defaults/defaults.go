@@ -205,6 +205,9 @@ const (
 	// GravityRPCInstallerSocketName defines the name of the socket file for the installer service
 	GravityRPCInstallerSocketName = "installer.sock"
 
+	// GravityRPCJoinSocketName defines the name of the socket file for the installer service
+	GravityRPCJoinSocketName = "join.sock"
+
 	// GravityRPCResumeServiceName defines systemd unit service name for resuming the operation plan
 	GravityRPCResumeServiceName = "gravity-resume.service"
 

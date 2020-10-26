@@ -221,7 +221,7 @@ func joinFromService(env, joinEnv *localenv.LocalEnvironment, config JoinConfig)
 	interrupt := signals.NewInterruptHandler(ctx, cancel, InterruptSignals)
 	defer interrupt.Close()
 	go TerminationHandler(interrupt, env)
-	socketPath := state.GravityInstallerSocketPath(utils.Exe.WorkingDir)
+	socketPath := state.GravityJoinSocketPath(utils.Exe.WorkingDir)
 	listener, err := NewServiceListener(socketPath)
 	if err != nil {
 		return trace.Wrap(err)
@@ -875,7 +875,7 @@ func newAutoAgentConnectStrategy(env *localenv.LocalEnvironment, baseDir string,
 		Args:           args,
 		Validate:       environ.ValidateInstall(baseDir, defaults.GravityRPCAgentServiceName, env),
 		ApplicationDir: baseDir,
-		SocketPath:     state.GravityInstallerSocketPath(baseDir),
+		SocketPath:     state.GravityJoinSocketPath(baseDir),
 		ServicePath:    defaults.SystemUnitPath(defaults.GravityRPCAgentServiceName),
 		ServiceName:    defaults.GravityRPCAgentServiceName,
 	}, nil
@@ -910,7 +910,7 @@ func newAgentConnectStrategy(env *localenv.LocalEnvironment, baseDir string, con
 		Args:           args,
 		Validate:       environ.ValidateInstall(baseDir, defaults.GravityRPCAgentServiceName, env),
 		ApplicationDir: baseDir,
-		SocketPath:     state.GravityInstallerSocketPath(baseDir),
+		SocketPath:     state.GravityJoinSocketPath(baseDir),
 		ServicePath:    defaults.SystemUnitPath(defaults.GravityRPCAgentServiceName),
 		ServiceName:    defaults.GravityRPCAgentServiceName,
 	}, nil

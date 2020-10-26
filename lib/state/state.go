@@ -165,6 +165,12 @@ func GravityInstallerSocketPath(baseDir string) (path string) {
 	return GravityInstallDirAt(baseDir, defaults.GravityRPCInstallerSocketName)
 }
 
+// GravityJoinSocketPath returns the path to the installer socket file
+// inside the installer state directory rooted at baseDir.
+func GravityJoinSocketPath(baseDir string) (path string) {
+	return GravityInstallDirAt(baseDir, defaults.GravityRPCJoinSocketName)
+}
+
 // GravityInstallDir returns the location of the temporary state directory for
 // the install/join operation.
 // elems are appended to resulting path
