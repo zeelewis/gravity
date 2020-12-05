@@ -26,6 +26,7 @@ import (
 
 	teleweb "github.com/gravitational/teleport/lib/web"
 	"github.com/gravitational/trace"
+	tracens "github.com/gravitational/trace/ns"
 )
 
 type Authenticator func(w http.ResponseWriter, r *http.Request, checkBearerToken bool) (*teleweb.SessionContext, error)
@@ -60,30 +61,30 @@ func ParseAuthHeaders(r *http.Request) (*AuthCreds, error) {
 
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" {
-		return nil, trace.AccessDenied("unauthorized")
+		return nil, tracens.AccessDenied("unauthorized")
 	}
 
 	auth := strings.SplitN(authHeader, " ", 2)
 
 	if len(auth) != 2 {
-		return nil, trace.BadParameter("invalid auth header")
+		return nil, tracens.BadParameter("invalid auth header")
 	}
 
 	switch auth[0] {
 	case AuthBasic:
 		payload, err := base64.StdEncoding.DecodeString(auth[1])
 		if err != nil {
-			return nil, trace.BadParameter(err.Error())
+			return nil, tracens.BadParameter(err.Error())
 		}
 		pair := strings.SplitN(string(payload), ":", 2)
 		if len(pair) != 2 {
-			return nil, trace.BadParameter("bad header")
+			return nil, tracens.BadParameter("bad header")
 		}
 		return &AuthCreds{Type: AuthBasic, Username: pair[0], Password: pair[1]}, nil
 	case AuthBearer:
 		return &AuthCreds{Type: AuthBearer, Password: auth[1]}, nil
 	}
-	return nil, trace.BadParameter("unsupported auth scheme")
+	return nil, tracens.BadParameter("unsupported auth scheme")
 }
 
 const (

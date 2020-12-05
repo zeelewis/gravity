@@ -56,6 +56,7 @@ import (
 	teleservices "github.com/gravitational/teleport/lib/services"
 	teleweb "github.com/gravitational/teleport/lib/web"
 	"github.com/gravitational/trace"
+	tracens "github.com/gravitational/trace/ns"
 	"github.com/julienschmidt/httprouter"
 	log "github.com/sirupsen/logrus"
 )
@@ -109,46 +110,46 @@ type Config struct {
 // Check validates the config
 func (c Config) Check() error {
 	if c.Identity == nil {
-		return trace.BadParameter("missing Identity")
+		return tracens.AccessDenied("missing Identity")
 	}
 	if c.PrefixURL == "" {
-		return trace.BadParameter("missing PrefixURL")
+		return tracens.AccessDenied("missing PrefixURL")
 	}
 	if c.Auth == nil {
-		return trace.BadParameter("missing Auth")
+		return tracens.AccessDenied("missing Auth")
 	}
 	if c.WebAuthenticator == nil {
-		return trace.BadParameter("missing WebAuthenticator")
+		return tracens.AccessDenied("missing WebAuthenticator")
 	}
 	if c.Operator == nil {
-		return trace.BadParameter("missing Operator")
+		return tracens.AccessDenied("missing Operator")
 	}
 	if c.Applications == nil {
-		return trace.BadParameter("missing Applications")
+		return tracens.AccessDenied("missing Applications")
 	}
 	if c.Packages == nil {
-		return trace.BadParameter("missing Packages")
+		return tracens.AccessDenied("missing Packages")
 	}
 	if c.Providers == nil {
-		return trace.BadParameter("missing Providers")
+		return tracens.AccessDenied("missing Providers")
 	}
 	if c.Tunnel == nil {
-		return trace.BadParameter("missing Tunnel")
+		return tracens.AccessDenied("missing Tunnel")
 	}
 	if c.Clients == nil {
-		return trace.BadParameter("missing Clients")
+		return tracens.AccessDenied("missing Clients")
 	}
 	if c.Converter == nil {
-		return trace.BadParameter("missing Converter")
+		return tracens.AccessDenied("missing Converter")
 	}
 	if c.Mode == "" {
-		return trace.BadParameter("missing Mode")
+		return tracens.AccessDenied("missing Mode")
 	}
 	if c.Backend == nil {
-		return trace.BadParameter("missing Backend")
+		return tracens.AccessDenied("missing Backend")
 	}
 	if c.ProxyHost == "" {
-		return trace.BadParameter("missing ProxyHost")
+		return tracens.AccessDenied("missing ProxyHost")
 	}
 	return nil
 }
@@ -191,7 +192,7 @@ type CallbackParams struct {
 func NewAPI(cfg Config) (*Handler, error) {
 	err := cfg.Check()
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 
 	h := &Handler{
@@ -286,7 +287,7 @@ func NewAPI(cfg Config) (*Handler, error) {
 }
 
 func (m *Handler) notFound(w http.ResponseWriter, r *http.Request) (interface{}, error) {
-	return nil, trace.NotFound("method not found")
+	return nil, tracens.NotFound("method not found")
 }
 
 // SetPlugin sets the handler plugin
@@ -305,17 +306,17 @@ func (m *Handler) CallbackHandler(w http.ResponseWriter, r *http.Request, p Call
 		err := csrf.VerifyToken(p.CSRFToken, r)
 		if err != nil {
 			m.Warnf("Failed to verify CSRF token: %v.", err)
-			return trace.AccessDenied("access denied")
+			return tracens.AccessDenied("access denied")
 		}
 		m.Info("Redirecting to web browser.")
 		err = teleweb.SetSession(w, p.Username, p.Session.GetName())
 		if err != nil {
-			return trace.Wrap(err)
+			return tracens.Wrap(err)
 		}
 		return telehttplib.SafeRedirect(w, r, p.ClientRedirectURL)
 	}
 	if len(p.PublicKey) == 0 {
-		return trace.BadParameter("not a web or console login request")
+		return tracens.AccessDenied("not a web or console login request")
 	}
 	m.Info("Redirecting to console login.")
 	redirectURL, err := teleweb.ConstructSSHResponse(teleweb.AuthParams{
@@ -328,7 +329,7 @@ func (m *Handler) CallbackHandler(w http.ResponseWriter, r *http.Request, p Call
 		ClientRedirectURL: p.ClientRedirectURL,
 	})
 	if err != nil {
-		return trace.Wrap(err)
+		return tracens.Wrap(err)
 	}
 	http.Redirect(w, r, redirectURL.String(), http.StatusFound)
 	return nil
@@ -385,7 +386,7 @@ func (m *Handler) getUserToken(w http.ResponseWriter, r *http.Request, p httprou
 	if err != nil {
 		log.Errorf("failed to fetch user token: %v", trace.DebugReport(err))
 		// we hide the error from the remote user to avoid giving any hints
-		return nil, trace.AccessDenied("bad or expired token")
+		return nil, tracens.AccessDenied("bad or expired token")
 	}
 	return userToken, nil
 }
@@ -410,7 +411,7 @@ type inviteUserReq struct {
 func (m *Handler) createUserInvite(w http.ResponseWriter, r *http.Request, p httprouter.Params, ctx *AuthContext) (interface{}, error) {
 	var req inviteUserReq
 	if err := telehttplib.ReadJSON(r, &req); err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 	inviteToken, err := ctx.Operator.CreateUserInvite(r.Context(),
 		ops.CreateUserInviteRequest{
@@ -419,7 +420,7 @@ func (m *Handler) createUserInvite(w http.ResponseWriter, r *http.Request, p htt
 			Roles:   req.Roles,
 		})
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 	return inviteToken, nil
 }
@@ -431,7 +432,7 @@ func (m *Handler) createUserInvite(w http.ResponseWriter, r *http.Request, p htt
 func (m *Handler) getUserInvites(w http.ResponseWriter, r *http.Request, p httprouter.Params, ctx *AuthContext) (interface{}, error) {
 	invites, err := ctx.Operator.GetUserInvites(r.Context(), clusterKey(ctx, p))
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 	return invites, nil
 }
@@ -446,7 +447,7 @@ func (m *Handler) deleteUserInvite(w http.ResponseWriter, r *http.Request, p htt
 		Name:    p.ByName("username"),
 	})
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 	return httplib.OK(), nil
 }
@@ -463,7 +464,7 @@ func (m *Handler) createUserReset(w http.ResponseWriter, r *http.Request, p http
 			TTL:     defaults.UserResetTokenTTL,
 		})
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 	return resetToken, nil
 }
@@ -475,11 +476,11 @@ func (m *Handler) createUserReset(w http.ResponseWriter, r *http.Request, p http
 func (m *Handler) getWebContext(w http.ResponseWriter, r *http.Request, p httprouter.Params, ctx *AuthContext) (interface{}, error) {
 	cluster, err := ctx.Operator.GetSite(clusterKey(ctx, p))
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 	userCtx, err := ui.NewWebContext(ctx.User, ctx.Identity, *cluster)
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 	return userCtx, nil
 }
@@ -491,12 +492,12 @@ func (m *Handler) getWebContext(w http.ResponseWriter, r *http.Request, p httpro
 func (m *Handler) getUsers(w http.ResponseWriter, r *http.Request, p httprouter.Params, ctx *AuthContext) (interface{}, error) {
 	users, err := ctx.Operator.GetUsers(clusterKey(ctx, p))
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 
 	invites, err := ctx.Operator.GetUserInvites(r.Context(), clusterKey(ctx, p))
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 
 	uiUsers := []ui.User{}
@@ -525,7 +526,7 @@ func (m *Handler) getUsers(w http.ResponseWriter, r *http.Request, p httprouter.
 func (m *Handler) updateUser(w http.ResponseWriter, r *http.Request, p httprouter.Params, ctx *AuthContext) (interface{}, error) {
 	uiUser := ui.User{}
 	if err := telehttplib.ReadJSON(r, &uiUser); err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 	err := ctx.Operator.UpdateUser(r.Context(), ops.UpdateUserRequest{
 		SiteKey:  clusterKey(ctx, p),
@@ -534,7 +535,7 @@ func (m *Handler) updateUser(w http.ResponseWriter, r *http.Request, p httproute
 		Roles:    uiUser.Roles,
 	})
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 	return httplib.OK(), nil
 }
@@ -548,7 +549,7 @@ func (m *Handler) updateUser(w http.ResponseWriter, r *http.Request, p httproute
 func (m *Handler) deleteUser(w http.ResponseWriter, r *http.Request, p httprouter.Params, ctx *AuthContext) (interface{}, error) {
 	err := ctx.Operator.DeleteUser(r.Context(), clusterKey(ctx, p), p.ByName("username"))
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 	return httplib.OK(), nil
 }
@@ -569,11 +570,11 @@ type updatePasswordReq struct {
 func (m *Handler) updateUserPassword(w http.ResponseWriter, r *http.Request, p httprouter.Params, ctx *AuthContext) (interface{}, error) {
 	var req *updatePasswordReq
 	if err := telehttplib.ReadJSON(r, &req); err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 	err := ctx.Identity.UpdatePassword(ctx.User.GetName(), req.OldPassword, req.NewPassword)
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 
 	return httplib.OK(), nil
@@ -606,22 +607,22 @@ type AuthContext struct {
 func (m *Handler) GetHandlerContext(w http.ResponseWriter, r *http.Request) (*AuthContext, error) {
 	authCreds, err := httplib.ParseAuthHeaders(r)
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 	if authCreds.Type == httplib.AuthBasic {
-		return nil, trace.AccessDenied("method not supported")
+		return nil, tracens.AccessDenied("method not supported")
 	}
 	session, err := m.cfg.WebAuthenticator(w, r, true)
 	if err != nil {
-		return nil, trace.AccessDenied("bad username or password")
+		return nil, tracens.AccessDenied("bad username or password")
 	}
 	user, err := m.cfg.Identity.GetTelekubeUser(session.GetUser())
 	if err != nil {
-		return nil, trace.AccessDenied("bad username or password")
+		return nil, tracens.AccessDenied("bad username or password")
 	}
 	checker, err := m.cfg.Identity.GetAccessChecker(user)
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 	return &AuthContext{
 		// Enrich request context with authenticated user information.
@@ -640,11 +641,11 @@ func (m *Handler) needsAuth(fn authenticatedHandler) httprouter.Handle {
 	return telehttplib.MakeHandler(func(w http.ResponseWriter, r *http.Request, params httprouter.Params) (interface{}, error) {
 		context, err := m.GetHandlerContext(w, r)
 		if err != nil {
-			return nil, trace.Wrap(err)
+			return nil, tracens.Wrap(err)
 		}
 		result, err := fn(w, r.WithContext(context.Context), params, context)
 		log.Debugf("%v %v %v", r.Method, r.URL.String(), err)
-		return result, trace.Wrap(err)
+		return result, tracens.Wrap(err)
 	})
 }
 
@@ -659,21 +660,21 @@ func (m *Handler) needsAuth(fn authenticatedHandler) httprouter.Handle {
 func (m *Handler) resetUserCompleteHandle(w http.ResponseWriter, r *http.Request, p httprouter.Params) (interface{}, error) {
 	var req users.UserTokenCompleteRequest
 	if err := telehttplib.ReadJSON(r, &req); err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 
 	if err := req.Password.Check(); err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 
 	websession, err := m.cfg.Identity.ResetUserWithToken(req)
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 
 	err = teleweb.SetSession(w, websession.GetUser(), websession.GetName())
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 
 	return httplib.OK(), nil
@@ -682,20 +683,20 @@ func (m *Handler) resetUserCompleteHandle(w http.ResponseWriter, r *http.Request
 func (m *Handler) inviteUserCompleteHandle(w http.ResponseWriter, r *http.Request, p httprouter.Params) (interface{}, error) {
 	var req users.UserTokenCompleteRequest
 	if err := telehttplib.ReadJSON(r, &req); err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 
 	if err := req.Password.Check(); err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 
 	websession, err := m.cfg.Identity.CreateUserWithToken(req)
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 
 	if err := teleweb.SetSession(w, websession.GetUser(), websession.GetName()); err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 	return httplib.OK(), nil
 }
@@ -725,7 +726,7 @@ func (m *Handler) validateDomainName(w http.ResponseWriter, r *http.Request, p h
 			// TODO: have ValidateDomainName generate alternatives
 			suggestions = []string{""}
 		} else {
-			return nil, trace.Wrap(err)
+			return nil, tracens.Wrap(err)
 		}
 	}
 
@@ -768,7 +769,7 @@ func (m *Handler) validateDomainName(w http.ResponseWriter, r *http.Request, p h
 func (m *Handler) validateProvider(w http.ResponseWriter, r *http.Request, p httprouter.Params, authCtx *AuthContext) (interface{}, error) {
 	var req ValidateInput
 	if err := telehttplib.ReadJSON(r, &req); err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 
 	result, err := m.cfg.Providers.Validate(&req, context.TODO())
@@ -776,13 +777,13 @@ func (m *Handler) validateProvider(w http.ResponseWriter, r *http.Request, p htt
 		if _, ok := trace.Unwrap(err).(awsservice.VerificationError); ok {
 			w.WriteHeader(http.StatusForbidden)
 		}
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 
 	if schema.IsAWSProvider(req.Provider) && result.AWS != nil {
 		app, err := authCtx.Applications.GetApp(loc.Locator(req.Application))
 		if err != nil {
-			return nil, trace.Wrap(err)
+			return nil, tracens.Wrap(err)
 		}
 		supportedRegions := app.Manifest.Providers.AWS.Regions
 		if len(supportedRegions) != 0 {
@@ -813,7 +814,7 @@ func (m *Handler) getSiteOperationProgress(w http.ResponseWriter, r *http.Reques
 	siteDomain, operationID := p[0].Value, p[1].Value
 	site, err := context.Operator.GetSiteByDomain(siteDomain)
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 
 	opKey := ops.SiteOperationKey{
@@ -825,7 +826,7 @@ func (m *Handler) getSiteOperationProgress(w http.ResponseWriter, r *http.Reques
 	progressEntry, err := context.Operator.GetSiteOperationProgress(opKey)
 
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 
 	return progressEntry, nil
@@ -851,7 +852,7 @@ func (m *Handler) agentReport(w http.ResponseWriter, r *http.Request, p httprout
 	siteDomain, operationID := p[0].Value, p[1].Value
 	site, err := context.Operator.GetSiteByDomain(siteDomain)
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 	opKey := ops.SiteOperationKey{
 		AccountID:   site.AccountID,
@@ -860,11 +861,11 @@ func (m *Handler) agentReport(w http.ResponseWriter, r *http.Request, p httprout
 	}
 	app, err := context.Applications.GetApp(site.App.Package)
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 	op, err := context.Operator.GetSiteOperation(opKey)
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 	var agentReport *ops.AgentReport
 	switch op.Type {
@@ -874,13 +875,13 @@ func (m *Handler) agentReport(w http.ResponseWriter, r *http.Request, p httprout
 		agentReport, err = context.Operator.GetSiteExpandOperationAgentReport(r.Context(), opKey)
 	}
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 	servers := make([]serverInfo, 0, len(agentReport.Servers))
 	for _, server := range agentReport.Servers {
 		profile, err := app.Manifest.NodeProfiles.ByName(server.Role)
 		if err != nil {
-			return nil, trace.Wrap(err)
+			return nil, tracens.Wrap(err)
 		}
 		var mounts []storage.Mount
 		for _, m := range profile.Mounts() {
@@ -1031,7 +1032,7 @@ type siteCreateOutput struct {
 func (m *Handler) createSite(w http.ResponseWriter, r *http.Request, p httprouter.Params, context *AuthContext) (interface{}, error) {
 	var input siteCreateInput
 	if err := telehttplib.ReadJSON(r, &input); err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 
 	req := ops.NewSiteRequest{
@@ -1069,7 +1070,7 @@ func (m *Handler) createSite(w http.ResponseWriter, r *http.Request, p httproute
 		vars.OnPrem.PodCIDR = input.Provider.OnPrem.PodCIDR
 		vars.OnPrem.ServiceCIDR = input.Provider.OnPrem.ServiceCIDR
 	default:
-		return nil, trace.BadParameter("provider unspecified in request")
+		return nil, tracens.AccessDenied("provider unspecified in request")
 	}
 
 	if req.ServiceUser.IsEmpty() {
@@ -1081,7 +1082,7 @@ func (m *Handler) createSite(w http.ResponseWriter, r *http.Request, p httproute
 	}
 	site, err := context.Operator.CreateSite(req)
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 	opReq := ops.CreateSiteInstallOperationRequest{
 		SiteDomain:  site.Domain,
@@ -1096,7 +1097,7 @@ func (m *Handler) createSite(w http.ResponseWriter, r *http.Request, p httproute
 		if errDelete != nil {
 			log.Errorf("failed to delete site %v: %v", siteKey, trace.DebugReport(errDelete))
 		}
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 	return &siteCreateOutput{key.SiteDomain}, nil
 }
@@ -1141,12 +1142,12 @@ func (m *Handler) expandSite(w http.ResponseWriter, r *http.Request, p httproute
 		AccountID:  context.User.GetAccountID(),
 	})
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 
 	var input siteExpandInput
 	if err := telehttplib.ReadJSON(r, &input); err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 
 	var vars storage.OperationVariables
@@ -1178,11 +1179,11 @@ func (m *Handler) expandSite(w http.ResponseWriter, r *http.Request, p httproute
 	}
 	var operationKey *ops.SiteOperationKey
 	if operationKey, err = context.Operator.CreateSiteExpandOperation(r.Context(), opReq); err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 	var operation *ops.SiteOperation
 	if operation, err = context.Operator.GetSiteOperation(*operationKey); err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 	return &siteExpandOutput{*operation}, nil
 }
@@ -1222,7 +1223,7 @@ type siteShrinkOutput struct {
 func (m *Handler) shrinkSite(w http.ResponseWriter, r *http.Request, p httprouter.Params, context *AuthContext) (interface{}, error) {
 	var input siteShrinkInput
 	if err := telehttplib.ReadJSON(r, &input); err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 
 	var vars storage.OperationVariables
@@ -1239,12 +1240,12 @@ func (m *Handler) shrinkSite(w http.ResponseWriter, r *http.Request, p httproute
 		Provisioner: input.Provider.Provisioner,
 	})
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 
 	operation, err := context.Operator.GetSiteOperation(*key)
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 
 	return siteShrinkOutput{Operation: *operation}, nil
@@ -1263,11 +1264,11 @@ func (m *Handler) shrinkSite(w http.ResponseWriter, r *http.Request, p httproute
 func (m *Handler) getCluster(w http.ResponseWriter, r *http.Request, p httprouter.Params, context *AuthContext) (interface{}, error) {
 	shallow, err := utils.ParseBoolFlag(r, "shallow", false)
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 	cluster, err := context.Operator.GetSite(clusterKey(context, p))
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 	releases, err := getReleases(context.Operator, *cluster)
 	if err != nil {
@@ -1296,7 +1297,7 @@ func (m *Handler) getApps(w http.ResponseWriter, r *http.Request, p httprouter.P
 		AccountID:  context.User.GetAccountID(),
 	})
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 
 	var appService app.Applications
@@ -1307,7 +1308,7 @@ func (m *Handler) getApps(w http.ResponseWriter, r *http.Request, p httprouter.P
 		// when running in Ops Center mode, use remote cluster apps client
 		appService, err = m.cfg.Clients.AppsClient(site.Domain)
 		if err != nil {
-			return nil, trace.Wrap(err)
+			return nil, tracens.Wrap(err)
 		}
 	}
 
@@ -1315,7 +1316,7 @@ func (m *Handler) getApps(w http.ResponseWriter, r *http.Request, p httprouter.P
 		Repository: site.App.Package.Repository,
 	})
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 
 	var out []appsapi.Application
@@ -1346,11 +1347,11 @@ func (m *Handler) getApps(w http.ResponseWriter, r *http.Request, p httprouter.P
 func (m *Handler) uploadApp(w http.ResponseWriter, r *http.Request, p httprouter.Params, context *AuthContext) (interface{}, error) {
 	var files form.Files
 	if err := form.Parse(r, form.FileSlice("source", &files)); err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 	defer files.Close()
 	if len(files) != 1 {
-		return nil, trace.BadParameter("expected a single file but got %v", len(files))
+		return nil, tracens.AccessDenied("expected a single file but got %v", len(files))
 	}
 
 	progressC := make(chan *appsapi.ProgressEntry)
@@ -1363,18 +1364,18 @@ func (m *Handler) uploadApp(w http.ResponseWriter, r *http.Request, p httprouter
 	}
 	op, err := context.Applications.CreateImportOperation(req)
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 
 	for range progressC {
 	}
 
 	if err = <-errorC; err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 
 	app, err := context.Applications.GetImportedApplication(*op)
-	return app, trace.Wrap(err)
+	return app, tracens.Wrap(err)
 }
 
 // getCertificate returns information about the cluster certificate
@@ -1391,11 +1392,11 @@ func (m *Handler) getCertificate(w http.ResponseWriter, r *http.Request, p httpr
 		SiteDomain: p[0].Value,
 	}, false)
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 	info, err := utils.ParseCertificate(cert.Certificate)
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 	return info, nil
 }
@@ -1417,17 +1418,17 @@ func (m *Handler) getCertificate(w http.ResponseWriter, r *http.Request, p httpr
 func (m *Handler) updateCertificate(w http.ResponseWriter, r *http.Request, p httprouter.Params, context *AuthContext) (interface{}, error) {
 	certificate, err := readFile(r, "certificate")
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 
 	privateKey, err := readFile(r, "private_key")
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 
 	intermediate, err := readFile(r, "intermediate")
 	if err != nil && !trace.IsNotFound(err) {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 
 	cert, err := context.Operator.UpdateClusterCertificate(r.Context(), ops.UpdateCertificateRequest{
@@ -1438,12 +1439,12 @@ func (m *Handler) updateCertificate(w http.ResponseWriter, r *http.Request, p ht
 		Intermediate: intermediate,
 	})
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 
 	info, err := utils.ParseCertificate(cert.Certificate)
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 
 	return info, nil
@@ -1455,18 +1456,18 @@ func readFile(r *http.Request, name string) ([]byte, error) {
 	var files form.Files
 	err := form.Parse(r, form.FileSlice(name, &files))
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 	defer files.Close()
 	if len(files) == 0 {
-		return nil, trace.NotFound("file %q is not provided", name)
+		return nil, tracens.NotFound("file %q is not provided", name)
 	}
 	if len(files) != 1 {
-		return nil, trace.BadParameter("expected 1 file %q, got %v", name, len(files))
+		return nil, tracens.AccessDenied("expected 1 file %q, got %v", name, len(files))
 	}
 	data, err := ioutil.ReadAll(files[0])
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 	return data, nil
 }
@@ -1516,11 +1517,11 @@ func newWebCluster(cluster ops.Site, releases []webRelease, shallow bool) webClu
 func (m *Handler) getClusters(w http.ResponseWriter, r *http.Request, p httprouter.Params, context *AuthContext) (interface{}, error) {
 	shallow, err := utils.ParseBoolFlag(r, "shallow", false)
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 	clusters, err := context.Operator.GetSites(context.User.GetAccountID())
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 	var webClusters []webCluster
 	for _, cluster := range clusters {
@@ -1556,7 +1557,7 @@ type siteUpdateOutput struct {
 func (m *Handler) updateSiteApp(w http.ResponseWriter, r *http.Request, p httprouter.Params, context *AuthContext) (interface{}, error) {
 	var input siteUpdateInput
 	if err := telehttplib.ReadJSON(r, &input); err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 	req := ops.CreateSiteAppUpdateOperationRequest{
 		AccountID:   context.User.GetAccountID(),
@@ -1567,7 +1568,7 @@ func (m *Handler) updateSiteApp(w http.ResponseWriter, r *http.Request, p httpro
 	log.Infof("got site update operation request: %v", req)
 	op, err := context.Operator.CreateSiteAppUpdateOperation(r.Context(), req)
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 	return &siteUpdateOutput{op.OperationID}, nil
 }
@@ -1605,7 +1606,7 @@ type uninstallSiteInput struct {
 func (m *Handler) uninstallSite(w http.ResponseWriter, r *http.Request, p httprouter.Params, context *AuthContext) (interface{}, error) {
 	var input uninstallSiteInput
 	if err := telehttplib.ReadJSON(r, &input); err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 
 	// if we're asked only to remove the site from OpsCenter, do not launch uninstall operation
@@ -1616,7 +1617,7 @@ func (m *Handler) uninstallSite(w http.ResponseWriter, r *http.Request, p httpro
 			SiteDomain: p.ByName("domain"),
 		})
 		if err != nil {
-			return nil, trace.Wrap(err)
+			return nil, tracens.Wrap(err)
 		}
 
 		return httplib.OK(), nil
@@ -1634,7 +1635,7 @@ func (m *Handler) uninstallSite(w http.ResponseWriter, r *http.Request, p httpro
 		},
 	})
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 
 	go monitorUninstallProgress(context.Operator, *opKey)
@@ -1644,7 +1645,7 @@ func (m *Handler) uninstallSite(w http.ResponseWriter, r *http.Request, p httpro
 func (m *Handler) uninstallStatus(w http.ResponseWriter, r *http.Request, p httprouter.Params, context *AuthContext) (interface{}, error) {
 	status, err := ui.GetUninstallStatus(context.User.GetAccountID(), p.ByName("domain"), context.Operator)
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 
 	return status, nil
@@ -1662,7 +1663,7 @@ func monitorUninstallProgress(operator ops.Operator, opKey ops.SiteOperationKey)
 		switch progress.State {
 		case ops.ProgressStateCompleted:
 		case ops.ProgressStateFailed:
-			err = trace.Errorf(progress.Message)
+			err = tracens.Errorf(progress.Message)
 		default:
 			continue
 		}
@@ -1687,11 +1688,11 @@ func (m *Handler) getClusterInfo(w http.ResponseWriter, r *http.Request, p httpr
 		SiteDomain: p.ByName("domain"),
 	})
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 	clusterInfo, err := getClusterInfo(ctx.Operator, *cluster)
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 	return clusterInfo, nil
 }
@@ -1712,7 +1713,7 @@ type webJoinToken struct {
 func (m *Handler) getJoinToken(w http.ResponseWriter, r *http.Request, p httprouter.Params, ctx *AuthContext) (interface{}, error) {
 	token, err := ctx.Operator.GetExpandToken(clusterKey(ctx, p))
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 	return &webJoinToken{
 		Token: token.Token,
@@ -1735,7 +1736,7 @@ func (m *Handler) getSiteReport(w http.ResponseWriter, r *http.Request, p httpro
 	if val := r.URL.Query().Get("since"); val != "" {
 		var err error
 		if since, err = time.ParseDuration(val); err != nil {
-			return nil, trace.Wrap(err)
+			return nil, tracens.Wrap(err)
 		}
 	}
 
@@ -1748,7 +1749,7 @@ func (m *Handler) getSiteReport(w http.ResponseWriter, r *http.Request, p httpro
 			Since: since,
 		})
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 	defer reader.Close()
 
@@ -1756,7 +1757,7 @@ func (m *Handler) getSiteReport(w http.ResponseWriter, r *http.Request, p httpro
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%v", defaults.ReportTarball))
 
 	_, err = io.Copy(w, reader)
-	return nil, trace.Wrap(err)
+	return nil, tracens.Wrap(err)
 }
 
 // getServers obtains the list of server nodes for the specified site
@@ -1782,21 +1783,21 @@ func (m *Handler) getServers(w http.ResponseWriter, r *http.Request, p httproute
 		AccountID:  context.User.GetAccountID(),
 	})
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 	remoteSite, err := m.cfg.Tunnel.GetSite(site.Domain)
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 
 	client, err := remoteSite.GetClient()
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 
 	nodes, err := client.GetNodes(defaults.Namespace)
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 
 	servers := make([]serverListItem, 0, len(nodes))
@@ -1849,12 +1850,12 @@ func (m *Handler) getFlavors(w http.ResponseWriter, r *http.Request, p httproute
 	siteDomain := p[0].Value
 	site, err := context.Operator.GetSiteByDomain(siteDomain)
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 
 	app, err := context.Applications.GetApp(site.App.Package)
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 
 	var licensePayload *licenseapi.Payload
@@ -1982,18 +1983,18 @@ GET /portalapi/v1/apps/:repository_id/:package/:version
 func (m *Handler) getAppPackage(w http.ResponseWriter, r *http.Request, p httprouter.Params, context *AuthContext) (interface{}, error) {
 	locator, err := loc.NewLocator(p.ByName("repository"), p.ByName("package"), p.ByName("version"))
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 
 	_, reader, err := context.Packages.ReadPackage(*locator)
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 	defer reader.Close()
 
 	readSeeker, ok := reader.(io.ReadSeeker)
 	if !ok {
-		return nil, trace.BadParameter("expected read seeker object")
+		return nil, tracens.AccessDenied("expected read seeker object")
 	}
 	w.Header().Set("Content-Type", "application/x-tar")
 	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename=%v.tar`, locator.String()))
@@ -2011,7 +2012,7 @@ GET /portalapi/v1/apps/:repository_id/:package/:version/installer
 func (m *Handler) getAppInstaller(w http.ResponseWriter, r *http.Request, p httprouter.Params, context *AuthContext) (interface{}, error) {
 	locator, err := loc.NewLocator(p.ByName("repository"), p.ByName("package"), p.ByName("version"))
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 
 	reader, err := context.Operator.GetAppInstaller(ops.AppInstallerRequest{
@@ -2019,7 +2020,7 @@ func (m *Handler) getAppInstaller(w http.ResponseWriter, r *http.Request, p http
 		Application: *locator,
 	})
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 	defer reader.Close()
 
@@ -2027,7 +2028,7 @@ func (m *Handler) getAppInstaller(w http.ResponseWriter, r *http.Request, p http
 	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%v-%v.tar"`,
 		locator.Name, locator.Version))
 	_, err = io.Copy(w, reader)
-	return nil, trace.Wrap(err)
+	return nil, tracens.Wrap(err)
 }
 
 // getClusterMetrics returns basic cluster metrics.
@@ -2037,18 +2038,18 @@ func (m *Handler) getAppInstaller(w http.ResponseWriter, r *http.Request, p http
 func (m *Handler) getClusterMetrics(w http.ResponseWriter, r *http.Request, p httprouter.Params, ctx *AuthContext) (interface{}, error) {
 	err := r.ParseForm()
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 	var interval time.Duration
 	if i := r.Form.Get("interval"); i != "" {
 		if interval, err = time.ParseDuration(i); err != nil {
-			return nil, trace.Wrap(err)
+			return nil, tracens.Wrap(err)
 		}
 	}
 	var step time.Duration
 	if s := r.Form.Get("step"); s != "" {
 		if step, err = time.ParseDuration(s); err != nil {
-			return nil, trace.Wrap(err)
+			return nil, tracens.Wrap(err)
 		}
 	}
 	return ctx.Operator.GetClusterMetrics(r.Context(), ops.ClusterMetricsRequest{
@@ -2067,7 +2068,7 @@ func getReleases(operator ops.Operator, cluster ops.Site) ([]webRelease, error) 
 		IncludeIcons: true,
 	})
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return nil, tracens.Wrap(err)
 	}
 	result := make([]webRelease, 0, len(releases))
 	for _, release := range releases {
@@ -2087,7 +2088,7 @@ func getReleases(operator ops.Operator, cluster ops.Site) ([]webRelease, error) 
 	if !cluster.IsGravity() && !cluster.IsOpsCenter() {
 		endpoints, err := operator.GetApplicationEndpoints(cluster.Key())
 		if err != nil {
-			return nil, trace.Wrap(err)
+			return nil, tracens.Wrap(err)
 		}
 		result = append([]webRelease{{
 			Description:  cluster.App.Manifest.Metadata.Description,
