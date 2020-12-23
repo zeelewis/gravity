@@ -37,7 +37,7 @@ require (
 	github.com/docker/spdystream v0.0.0-20181023171402-6480d4af844c // indirect
 	github.com/dustin/go-humanize v1.0.0
 	github.com/emicklei/go-restful v2.11.0+incompatible // indirect
-	github.com/fatih/color v1.7.0
+	github.com/fatih/color v1.9.0
 	github.com/fsouza/go-dockerclient v1.0.0
 	github.com/garyburd/redigo v0.0.0-20151029235527-6ece6e0a09f2 // indirect
 	github.com/ghodss/yaml v1.0.1-0.20180820084758-c7ce16629ff4
@@ -80,6 +80,7 @@ require (
 	github.com/hashicorp/yamux v0.0.0-20180826203732-cc6d2ea263b2 // indirect
 	github.com/huandu/xstrings v1.2.0 // indirect
 	github.com/influxdata/kapacitor v1.5.6 // indirect
+	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/jonboulle/clockwork v0.2.0
 	github.com/julienschmidt/httprouter v1.2.0
 	github.com/konsorten/go-windows-terminal-sequences v1.0.3 // indirect
@@ -93,6 +94,7 @@ require (
 	github.com/mailgun/timetools v0.0.0-20150505213551-fd192d755b00
 	github.com/mailgun/ttlmap v0.0.0-20150816203249-16b258d86efc // indirect
 	github.com/maruel/panicparse v1.1.2-0.20180806203336-f20d4c4d746f // indirect
+	github.com/mattn/go-runewidth v0.0.0-00010101000000-000000000000 // indirect
 	github.com/mdp/rsc v0.0.0-20160131164516-90f07065088d // indirect
 	github.com/miekg/dns v1.1.26
 	github.com/mitchellh/copystructure v1.0.0 // indirect
@@ -173,7 +175,7 @@ replace (
 	github.com/coreos/go-oidc => github.com/gravitational/go-oidc v0.0.1
 	github.com/coreos/go-semver => github.com/coreos/go-semver v0.2.0
 	github.com/coreos/go-systemd => github.com/coreos/go-systemd v0.0.0-20180202092358-40e2722dffea
-	github.com/coreos/prometheus-operator => github.com/coreos/prometheus-operator v0.32.0
+	github.com/coreos/prometheus-operator => github.com/gravitational/prometheus-operator v0.35.2
 	github.com/davecgh/go-spew => github.com/davecgh/go-spew v1.1.0
 	github.com/docker/docker => github.com/gravitational/moby v1.4.2-0.20191008111026-2adf434ca696
 	github.com/docker/go-units => github.com/docker/go-units v0.3.1
