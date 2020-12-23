@@ -54,7 +54,7 @@ func (c *JobControl) Delete(ctx context.Context, cascade bool) error {
 		return trace.Wrap(err)
 	}
 
-	c.Info("deleting current job")
+	c.Debug("deleting current job")
 	deletePolicy := metav1.DeletePropagationForeground
 	err = jobs.Delete(c.Job.Name, &metav1.DeleteOptions{
 		PropagationPolicy: &deletePolicy,
@@ -93,6 +93,11 @@ func (c *JobControl) Upsert(ctx context.Context) error {
 	}
 
 	if currentJob != nil {
+		if checkCustomerManagedResource(currentJob.Annotations) {
+			c.WithField("job", formatMeta(c.Job.ObjectMeta)).Info("Skipping update since object is customer managed.")
+			return nil
+		}
+
 		control, err := NewJobControl(JobConfig{Job: currentJob, Clientset: c.Clientset})
 		if err != nil {
 			return ConvertError(err)
@@ -103,7 +108,7 @@ func (c *JobControl) Upsert(ctx context.Context) error {
 		}
 	}
 
-	c.Info("creating new job")
+	c.Debug("creating new job")
 	c.Job.UID = ""
 	c.Job.SelfLink = ""
 	c.Job.ResourceVersion = ""

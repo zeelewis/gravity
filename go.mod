@@ -29,7 +29,6 @@ require (
 	github.com/containerd/continuity v0.0.0-20200107194136-26c1120b8d41 // indirect
 	github.com/coreos/etcd v3.3.25+incompatible
 	github.com/coreos/go-semver v0.3.0
-	github.com/coreos/prometheus-operator v0.0.0-00010101000000-000000000000 // indirect
 	github.com/davecgh/go-spew v1.1.1
 	github.com/docker/distribution v2.7.1+incompatible
 	github.com/docker/docker v1.4.2-0.20190327010347-be7ac8be2ae0
@@ -62,7 +61,7 @@ require (
 	github.com/gravitational/kingpin v2.1.11-0.20160205192003-785686550a08+incompatible // indirect
 	github.com/gravitational/license v0.0.0-20171013193735-f3111b1818ce
 	github.com/gravitational/oxy v0.0.0-20180629203109-e4a7e35311e6 // indirect
-	github.com/gravitational/rigging v0.0.0-20191021212636-83b2e9505286
+	github.com/gravitational/rigging v0.0.0-20201218214843-242199aaf7f5
 	github.com/gravitational/roundtrip v1.0.0
 	github.com/gravitational/satellite v0.0.9-0.20201119182158-fe29d7b2c010
 	github.com/gravitational/tail v1.0.1
@@ -145,7 +144,7 @@ require (
 	k8s.io/api v0.17.6
 	k8s.io/apiextensions-apiserver v0.0.0
 	k8s.io/apimachinery v0.17.6
-	k8s.io/client-go v2.0.0-alpha.0.0.20181121191925-a47917edff34+incompatible
+	k8s.io/client-go v12.0.0+incompatible
 	k8s.io/gengo v0.0.0-20191120174120-e74f70b9b27e // indirect
 	k8s.io/helm v2.16.12+incompatible
 	k8s.io/kube-aggregator v0.0.0

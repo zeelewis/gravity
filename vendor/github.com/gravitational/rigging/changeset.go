@@ -128,6 +128,13 @@ type Changeset struct {
 
 // Upsert upserts resource in a context of a changeset
 func (cs *Changeset) Upsert(ctx context.Context, changesetNamespace, changesetName string, data []byte) error {
+	// To support re-entrant calls to Upsert, we need to check to see if the last operation in the changeset is
+	// incomplete. If it is incomplete, we roll it back before continuing.
+	err := cs.revertIncompleteOperation(ctx, changesetNamespace, changesetName)
+	if err != nil {
+		return trace.Wrap(err)
+	}
+
 	decoder := yaml.NewYAMLOrJSONDecoder(bytes.NewReader(data), DefaultBufferSize)
 
 	for {
@@ -194,6 +201,10 @@ func (cs *Changeset) upsertResource(ctx context.Context, changesetNamespace, cha
 		_, err = cs.upsertNamespace(ctx, tr, data)
 	case KindPriorityClass:
 		_, err = cs.upsertPriorityClass(ctx, tr, data)
+	case KindValidatingWebhookConfiguration:
+		_, err = cs.upsertValidatingWebhookConfiguration(ctx, tr, data)
+	case KindMutatingWebhookConfiguration:
+		_, err = cs.upsertMutatingWebhookConfiguration(ctx, tr, data)
 	case KindAPIService:
 		_, err = cs.upsertAPIService(ctx, tr, data)
 	case KindServiceMonitor:
@@ -230,6 +241,14 @@ func (cs *Changeset) Status(ctx context.Context, changesetNamespace, changesetNa
 
 	if retryPeriod == 0 {
 		retryPeriod = DefaultRetryPeriod
+	}
+
+	// If any operation in the changeset is incomplete, the status won't update in the retry loop to be complete.
+	// So early exit if the changeset will not pass the status check in its current state.
+	for _, op := range tr.Spec.Items {
+		if op.Status == OpStatusCreated {
+			return trace.BadParameter("%v is not completed yet. Changelog needs to be rolled back.", tr)
+		}
 	}
 
 	return retry(ctx, retryAttempts, retryPeriod, func() error {
@@ -312,6 +331,10 @@ func (cs *Changeset) DeleteResource(ctx context.Context, changesetNamespace, cha
 		return cs.deleteNamespace(ctx, tr, resource.Name, cascade)
 	case KindPriorityClass:
 		return cs.deletePriorityClass(ctx, tr, resource.Name, cascade)
+	case KindValidatingWebhookConfiguration:
+		return cs.deleteValidatingWebhookConfiguration(ctx, tr, resource.Name, cascade)
+	case KindMutatingWebhookConfiguration:
+		return cs.deleteMutatingWebhookConfiguration(ctx, tr, resource.Name, cascade)
 	case KindAPIService:
 		return cs.deleteAPIService(ctx, tr, resource.Name, cascade)
 	case KindServiceMonitor:
@@ -360,25 +383,83 @@ func (cs *Changeset) Revert(ctx context.Context, changesetNamespace, changesetNa
 	})
 	for i := len(tr.Spec.Items) - 1; i >= 0; i-- {
 		op := &tr.Spec.Items[i]
+
+		// Reentrancy: skip any phases that may already be reverted by a previous rollback
+		if op.Status == OpStatusReverted {
+			continue
+		}
+
 		info, err := GetOperationInfo(*op)
 		if err != nil {
 			return trace.Wrap(err)
 		}
-		if op.Status != OpStatusCompleted {
-			log.Infof("skipping changeset item %v, status: %v is not the expected %v", info, op.Status, OpStatusCompleted)
-		}
+
+		log.Infof("Reverting changeset item %v, status: %v ", info, op.Status)
 		if err := cs.revert(ctx, op, info); err != nil {
 			return trace.Wrap(err)
 		}
+
 		op.Status = OpStatusReverted
+
 		tr, err = cs.update(tr)
 		if err != nil {
 			return trace.Wrap(err)
 		}
+
 	}
+
 	tr.Spec.Status = ChangesetStatusReverted
 	_, err = cs.update(tr)
 	return trace.Wrap(err)
+}
+
+// revertIncompleteOperation checks and rolls back the last operation in the changeset if it's incomplete.
+func (cs *Changeset) revertIncompleteOperation(ctx context.Context, changesetNamespace, changesetName string) error {
+	tr, err := cs.get(changesetNamespace, changesetName)
+	if err != nil {
+		if trace.IsNotFound(err) {
+			return nil
+		}
+		return trace.Wrap(err)
+	}
+
+	if tr.Spec.Status == ChangesetStatusReverted {
+		return nil
+	}
+
+	if len(tr.Spec.Items) == 0 {
+		return nil
+	}
+
+	log := log.WithFields(log.Fields{
+		"cs": tr.String(),
+	})
+
+	op := &tr.Spec.Items[len(tr.Spec.Items)-1]
+	if op.Status != OpStatusCreated {
+		return nil
+	}
+
+	info, err := GetOperationInfo(*op)
+	if err != nil {
+		return trace.Wrap(err)
+	}
+
+	log.Infof("Reverting incomplete changeset item %v, status: %v ", info, op.Status)
+	if err := cs.revert(ctx, op, info); err != nil {
+		return trace.Wrap(err)
+	}
+
+	// Remove the item from the changelog that we rolled back so `rig freeze` doesn't see the changelog as
+	// incomplete.
+	tr.Spec.Items = tr.Spec.Items[:len(tr.Spec.Items)-1]
+
+	tr, err = cs.update(tr)
+	if err != nil {
+		return trace.Wrap(err)
+	}
+
+	return nil
 }
 
 func (cs *Changeset) status(ctx context.Context, data []byte, uid string) error {
@@ -421,6 +502,10 @@ func (cs *Changeset) status(ctx context.Context, data []byte, uid string) error 
 		return cs.statusNamespace(ctx, data, uid)
 	case KindPriorityClass:
 		return cs.statusPriorityClass(ctx, data, uid)
+	case KindValidatingWebhookConfiguration:
+		return cs.statusValidatingWebhookConfiguration(ctx, data, uid)
+	case KindMutatingWebhookConfiguration:
+		return cs.statusMutatingWebhookConfiguration(ctx, data, uid)
 	case KindAPIService:
 		return cs.statusAPIService(ctx, data, uid)
 	case KindServiceMonitor:
@@ -798,6 +883,54 @@ func (cs *Changeset) statusCustomResourceDefinition(ctx context.Context, data []
 	return control.Status()
 }
 
+func (cs *Changeset) statusValidatingWebhookConfiguration(ctx context.Context, data []byte, uid string) error {
+	webhook, err := ParseValidatingWebhookConfiguration(bytes.NewReader(data))
+	if err != nil {
+		return trace.Wrap(err)
+	}
+	if uid != "" {
+		existing, err := cs.Client.AdmissionregistrationV1().ValidatingWebhookConfigurations().Get(webhook.Name, metav1.GetOptions{})
+		if err != nil {
+			return ConvertError(err)
+		}
+		if string(existing.GetUID()) != uid {
+			return trace.NotFound("validating webhook configuration with UID %v not found", uid)
+		}
+	}
+	control, err := NewValidatingWebhookConfigurationControl(ValidatingWebhookConfigurationConfig{
+		ValidatingWebhookConfiguration: webhook,
+		Client:                         cs.Client,
+	})
+	if err != nil {
+		return trace.Wrap(err)
+	}
+	return control.Status()
+}
+
+func (cs *Changeset) statusMutatingWebhookConfiguration(ctx context.Context, data []byte, uid string) error {
+	webhook, err := ParseMutatingWebhookConfiguration(bytes.NewReader(data))
+	if err != nil {
+		return trace.Wrap(err)
+	}
+	if uid != "" {
+		existing, err := cs.Client.AdmissionregistrationV1().MutatingWebhookConfigurations().Get(webhook.Name, metav1.GetOptions{})
+		if err != nil {
+			return ConvertError(err)
+		}
+		if string(existing.GetUID()) != uid {
+			return trace.NotFound("mutating webhook configuration with UID %v not found", uid)
+		}
+	}
+	control, err := NewMutatingWebhookConfigurationControl(MutatingWebhookConfigurationConfig{
+		MutatingWebhookConfiguration: webhook,
+		Client:                       cs.Client,
+	})
+	if err != nil {
+		return trace.Wrap(err)
+	}
+	return control.Status()
+}
+
 func (cs *Changeset) statusAPIService(ctx context.Context, data []byte, uid string) error {
 	apiService, err := ParseAPIService(bytes.NewReader(data))
 	if err != nil {
@@ -1128,6 +1261,40 @@ func (cs *Changeset) deletePriorityClass(ctx context.Context, tr *ChangesetResou
 	})
 }
 
+func (cs *Changeset) deleteValidatingWebhookConfiguration(ctx context.Context, tr *ChangesetResource, name string, cascade bool) error {
+	webhook, err := cs.Client.AdmissionregistrationV1().ValidatingWebhookConfigurations().Get(name, metav1.GetOptions{})
+	if err != nil {
+		return ConvertError(err)
+	}
+	control, err := NewValidatingWebhookConfigurationControl(ValidatingWebhookConfigurationConfig{
+		ValidatingWebhookConfiguration: webhook,
+		Client:                         cs.Client,
+	})
+	if err != nil {
+		return trace.Wrap(err)
+	}
+	return cs.withDeleteOp(ctx, tr, control.ValidatingWebhookConfiguration, func() error {
+		return control.Delete(ctx, cascade)
+	})
+}
+
+func (cs *Changeset) deleteMutatingWebhookConfiguration(ctx context.Context, tr *ChangesetResource, name string, cascade bool) error {
+	webhook, err := cs.Client.AdmissionregistrationV1().MutatingWebhookConfigurations().Get(name, metav1.GetOptions{})
+	if err != nil {
+		return ConvertError(err)
+	}
+	control, err := NewMutatingWebhookConfigurationControl(MutatingWebhookConfigurationConfig{
+		MutatingWebhookConfiguration: webhook,
+		Client:                       cs.Client,
+	})
+	if err != nil {
+		return trace.Wrap(err)
+	}
+	return cs.withDeleteOp(ctx, tr, control.MutatingWebhookConfiguration, func() error {
+		return control.Delete(ctx, cascade)
+	})
+}
+
 func (cs *Changeset) deleteAPIService(ctx context.Context, tr *ChangesetResource, name string, cascade bool) error {
 	apiService, err := cs.APIRegistrationClient.ApiregistrationV1().APIServices().Get(name, metav1.GetOptions{})
 	if err != nil {
@@ -1295,6 +1462,10 @@ func (cs *Changeset) revert(ctx context.Context, item *ChangesetItem, info *Oper
 		return cs.revertNamespace(ctx, item)
 	case KindPriorityClass:
 		return cs.revertPriorityClass(ctx, item)
+	case KindValidatingWebhookConfiguration:
+		return cs.revertValidatingWebhookConfiguration(ctx, item)
+	case KindMutatingWebhookConfiguration:
+		return cs.revertMutatingWebhookConfiguration(ctx, item)
 	case KindAPIService:
 		return cs.revertAPIService(ctx, item)
 	case KindServiceMonitor:
@@ -1647,6 +1818,58 @@ func (cs *Changeset) revertPriorityClass(ctx context.Context, item *ChangesetIte
 	return control.Upsert(ctx)
 }
 
+func (cs *Changeset) revertValidatingWebhookConfiguration(ctx context.Context, item *ChangesetItem) error {
+	resource := item.From
+	if len(resource) == 0 {
+		resource = item.To
+	}
+	webhook, err := ParseValidatingWebhookConfiguration(strings.NewReader(resource))
+	if err != nil {
+		return trace.Wrap(err)
+	}
+	control, err := NewValidatingWebhookConfigurationControl(ValidatingWebhookConfigurationConfig{
+		ValidatingWebhookConfiguration: webhook,
+		Client:                         cs.Client,
+	})
+	if err != nil {
+		return trace.Wrap(err)
+	}
+	if len(item.From) == 0 {
+		err = control.Delete(ctx, true)
+		if trace.IsNotFound(err) {
+			return nil
+		}
+		return trace.Wrap(err)
+	}
+	return control.Upsert(ctx)
+}
+
+func (cs *Changeset) revertMutatingWebhookConfiguration(ctx context.Context, item *ChangesetItem) error {
+	resource := item.From
+	if len(resource) == 0 {
+		resource = item.To
+	}
+	webhook, err := ParseMutatingWebhookConfiguration(strings.NewReader(resource))
+	if err != nil {
+		return trace.Wrap(err)
+	}
+	control, err := NewMutatingWebhookConfigurationControl(MutatingWebhookConfigurationConfig{
+		MutatingWebhookConfiguration: webhook,
+		Client:                       cs.Client,
+	})
+	if err != nil {
+		return trace.Wrap(err)
+	}
+	if len(item.From) == 0 {
+		err = control.Delete(ctx, true)
+		if trace.IsNotFound(err) {
+			return nil
+		}
+		return trace.Wrap(err)
+	}
+	return control.Upsert(ctx)
+}
+
 func (cs *Changeset) revertAPIService(ctx context.Context, item *ChangesetItem) error {
 	resource := item.From
 	if len(resource) == 0 {
@@ -1917,7 +2140,7 @@ func (cs *Changeset) upsertJob(ctx context.Context, tr *ChangesetResource, data 
 		if !trace.IsNotFound(err) {
 			return nil, trace.Wrap(err)
 		}
-		log.Info("existing job not found")
+		log.Debug("existing job not found")
 		current = nil
 	}
 	control, err := NewJobControl(JobConfig{Job: job, Clientset: cs.Client})
@@ -2245,6 +2468,75 @@ func (cs *Changeset) upsertPriorityClass(
 		updateTypeMetaPriorityClass(current)
 	}
 	return cs.withUpsertOp(ctx, tr, current, control.PriorityClass, func() error {
+		return control.Upsert(ctx)
+	})
+}
+
+func (cs *Changeset) upsertValidatingWebhookConfiguration(ctx context.Context, tr *ChangesetResource, data []byte) (*ChangesetResource, error) {
+	webhook, err := ParseValidatingWebhookConfiguration(bytes.NewReader(data))
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+	log := log.WithFields(log.Fields{
+		"cs":                               tr.String(),
+		"validating_webhook_configuration": fmt.Sprintf("%v/%v", webhook.Namespace, webhook.Name),
+	})
+	log.Infof("upsert validating webhook configuration %v", formatMeta(webhook.ObjectMeta))
+	client := cs.Client.AdmissionregistrationV1().ValidatingWebhookConfigurations()
+	current, err := client.Get(webhook.Name, metav1.GetOptions{})
+	err = ConvertError(err)
+	if err != nil {
+		if !trace.IsNotFound(err) {
+			return nil, trace.Wrap(err)
+		}
+		log.Debug("existing validating webhook configuration not found")
+		current = nil
+	}
+	control, err := NewValidatingWebhookConfigurationControl(ValidatingWebhookConfigurationConfig{
+		ValidatingWebhookConfiguration: webhook,
+		Client:                         cs.Client,
+	})
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+	if current != nil {
+		updateTypeMetaValidatingWebhookConfiguration(current)
+	}
+	return cs.withUpsertOp(ctx, tr, current, control.ValidatingWebhookConfiguration, func() error {
+		return control.Upsert(ctx)
+	})
+}
+
+func (cs *Changeset) upsertMutatingWebhookConfiguration(ctx context.Context, tr *ChangesetResource, data []byte) (*ChangesetResource, error) {
+	webhook, err := ParseMutatingWebhookConfiguration(bytes.NewReader(data))
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+	log := log.WithFields(log.Fields{
+		"cs":                             tr.String(),
+		"mutating_webhook_configuration": fmt.Sprintf("%v/%v", webhook.Namespace, webhook.Name),
+	})
+	log.Infof("upsert mutating webhook configuration %v", formatMeta(webhook.ObjectMeta))
+	client := cs.Client.AdmissionregistrationV1().MutatingWebhookConfigurations()
+	current, err := client.Get(webhook.Name, metav1.GetOptions{})
+	if err != nil {
+		if !trace.IsNotFound(ConvertError(err)) {
+			return nil, trace.Wrap(err)
+		}
+		log.Debug("existing mutating webhook configuration not found")
+		current = nil
+	}
+	control, err := NewMutatingWebhookConfigurationControl(MutatingWebhookConfigurationConfig{
+		MutatingWebhookConfiguration: webhook,
+		Client:                       cs.Client,
+	})
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+	if current != nil {
+		updateTypeMetaMutatingWebhookConfiguration(current)
+	}
+	return cs.withUpsertOp(ctx, tr, current, control.MutatingWebhookConfiguration, func() error {
 		return control.Upsert(ctx)
 	})
 }

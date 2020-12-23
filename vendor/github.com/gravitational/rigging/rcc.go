@@ -93,7 +93,7 @@ func (c *RCControl) Delete(ctx context.Context, cascade bool) error {
 	if err != nil {
 		return trace.Wrap(err)
 	}
-	c.Info("deleting current replication controller")
+	c.Debug("deleting current replication controller")
 	deletePolicy := metav1.DeletePropagationForeground
 	err = rcs.Delete(c.ReplicationController.Name, &metav1.DeleteOptions{
 		PropagationPolicy: &deletePolicy,
@@ -131,6 +131,11 @@ func (c *RCControl) Upsert(ctx context.Context) error {
 	}
 
 	if currentRC != nil {
+		if checkCustomerManagedResource(currentRC.Annotations) {
+			c.WithField("replicationcontroller", formatMeta(c.ReplicationController.ObjectMeta)).Info("Skipping update since object is customer managed.")
+			return nil
+		}
+
 		control, err := NewReplicationControllerControl(RCConfig{ReplicationController: currentRC, Client: c.Client})
 		if err != nil {
 			return ConvertError(err)
