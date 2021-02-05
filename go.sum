@@ -223,6 +223,8 @@ github.com/flynn/go-shlex v0.0.0-20150515145356-3f9db97f8568/go.mod h1:xEzjJPgXI
 github.com/fortytw2/leaktest v1.3.0/go.mod h1:jDsjWgpAGjm2CA7WthBh/CdZYEPF31XHquHwclZch5g=
 github.com/fsnotify/fsnotify v1.4.7 h1:IXs+QLmnXW2CcXuY+8Mzv/fWEsPGWxqefPtCP5CnV9I=
 github.com/fsnotify/fsnotify v1.4.7/go.mod h1:jwhsz4b93w/PPRr/qN1Yymfu8t87LnFCMoQvtojpjFo=
+github.com/fsouza/go-dockerclient v0.0.0-20160213172103-9184fe7a2d7c h1:3k0cnwh6hQ84dHvbqeuTL3mCrM4V4pwsTep4DFb9WKE=
+github.com/fsouza/go-dockerclient v0.0.0-20160213172103-9184fe7a2d7c/go.mod h1:KpcjM623fQYE9MZiTGzKhjfxXAV9wbyX2C1cyRHfhl0=
 github.com/fsouza/go-dockerclient v1.0.0 h1:Ka6dzvCHe+oWdJIY0eoTXaXa77FmZNiJUpTeoFLvrcA=
 github.com/fsouza/go-dockerclient v1.0.0/go.mod h1:KpcjM623fQYE9MZiTGzKhjfxXAV9wbyX2C1cyRHfhl0=
 github.com/garyburd/redigo v0.0.0-20151029235527-6ece6e0a09f2 h1:oPANGfJj1kUNthxd8FT6mvg/a1/P4IupFWjzxcTukjY=

@@ -167,6 +167,7 @@ replace (
 	github.com/docker/go-units => github.com/docker/go-units v0.3.1
 	github.com/dustin/go-humanize => github.com/dustin/go-humanize v0.0.0-20150809201405-1c212aae1d02
 	github.com/evanphx/json-patch => github.com/evanphx/json-patch v3.0.0+incompatible
+	github.com/fsouza/go-dockerclient => github.com/fsouza/go-dockerclient v0.0.0-20160213172103-9184fe7a2d7c
 	github.com/go-openapi/runtime => github.com/go-openapi/runtime v0.19.3
 	github.com/go-openapi/strfmt => github.com/go-openapi/strfmt v0.19.2
 	github.com/go-openapi/swag => github.com/go-openapi/swag v0.18.0
