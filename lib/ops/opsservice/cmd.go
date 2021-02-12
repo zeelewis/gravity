@@ -63,7 +63,7 @@ func (c Command) Run(ctx operationContext, runner remoteRunner, server remoteSer
 	if err != nil {
 		ctx.RecordError("[%v] %v", server.Address(), c.Description)
 		ctx.Errorf("%v: %s %v", c.Args, out, trace.DebugReport(err))
-		return nil, trace.Wrap(err)
+		return out, trace.Wrap(err)
 	}
 	ctx.RecordInfo("[%v] %v", server.Address(), c.Description)
 	ctx.Infof("%v: %s", c.Args, out)

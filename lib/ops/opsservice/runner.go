@@ -86,7 +86,7 @@ func (r *teleportRunner) Run(server remoteServer, args ...string) ([]byte, error
 func (r *teleportRunner) RunCmd(ctx operationContext, server remoteServer, cmd Command) ([]byte, error) {
 	out, err := cmd.Run(ctx, r, server)
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return out, trace.Wrap(err)
 	}
 	return out, nil
 }
@@ -173,7 +173,7 @@ func (r *localRunner) Run(args ...string) ([]byte, error) {
 	var b bytes.Buffer
 	err := r.RunStream(&b, args...)
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return b.Bytes(), trace.Wrap(err)
 	}
 	return b.Bytes(), nil
 }
@@ -181,7 +181,7 @@ func (r *localRunner) Run(args ...string) ([]byte, error) {
 func (r *localRunner) RunCmd(ctx operationContext, cmd Command) ([]byte, error) {
 	out, err := r.Run(cmd.Args...)
 	if err != nil {
-		return nil, trace.Wrap(err)
+		return out, trace.Wrap(err)
 	}
 	return out, nil
 }
