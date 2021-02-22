@@ -245,8 +245,26 @@ services:
 volumes:
   - name: dockersock
     temp: {}
+
+---
+kind: pipeline
+type: kubernetes
+name: walt's placeholder
+
+trigger:
+  event:
+  - push
+  branch:
+  - walt/*
+
+steps:
+  - name: fetch tags
+    image: docker:git
+    commands:
+      - git fetch --tags
+
 ---
 kind: signature
-hmac: 6de5f8231e4762e7eeed5589183af808169b4e58f3ff05c5457becfeec182687
+hmac: ec25f27bf4e629186d57b994e58d277eed402fea205614054d9cc42f82df8d7d
 
 ...
