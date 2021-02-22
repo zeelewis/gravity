@@ -229,7 +229,7 @@ steps:
       WEB_ANSIBLE_SSH_KEY:
         from_secret: WEB_ANSIBLE_SSH_KEY
     commands:
-      - apk add --no-cache make ansible
+      - apk add --no-cache make curl ansible
       - mkdir -m 0700 /root/.ssh && echo "$WEB_ANSIBLE_SSH_KEY" > /root/.ssh/id_ed25519 && chmod 600 /root/.ssh/id_ed25519
       - cd web
       - export ENV=${ENV:-production}
@@ -266,6 +266,6 @@ steps:
 
 ---
 kind: signature
-hmac: 7f50e543e4b591432c79c666717573a87a448fe382fe3d9f46baa7bda3e88aab
+hmac: cc1cfc208add5b13e936f9b7b0f79dad4971f229ddf329108a23f526bc183414
 
 ...
