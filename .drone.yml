@@ -232,7 +232,7 @@ steps:
       - apk add --no-cache make ansible
       - mkdir -m 0700 /root/.ssh && echo "$WEB_ANSIBLE_SSH_KEY" > /root/.ssh/id_ed25519 && chmod 600 /root/.ssh/id_ed25519
       - cd web
-      - export ENV=${ENV:-prod}
+      - export ENV=${ENV:-production}
       - make deploy-docs
 
 services:
@@ -266,6 +266,6 @@ steps:
 
 ---
 kind: signature
-hmac: 3af71e7abebae5a60cd1023e35b07e84f02c22bc525ef77274788d560b1aa121
+hmac: 7f50e543e4b591432c79c666717573a87a448fe382fe3d9f46baa7bda3e88aab
 
 ...
