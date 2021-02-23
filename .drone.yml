@@ -215,7 +215,7 @@ steps:
         from_secret: WEB_REPO
       GITHUB_WEB_DEPLOY_KEY:
         from_secret: GITHUB_WEB_DEPLOY_KEY
-      WEB_REF: master
+      WEB_REF: walt/cloudflare-cred-rotate
     commands:
     - mkdir -m 0700 /root/.ssh && echo "$GITHUB_WEB_DEPLOY_KEY" > /root/.ssh/id_ed25519 && chmod 600 /root/.ssh/id_ed25519
     - ssh-keyscan -H github.com > /root/.ssh/known_hosts && chmod 600 /root/.ssh/known_hosts
@@ -268,6 +268,6 @@ steps:
 
 ---
 kind: signature
-hmac: 7a6e122f98c8eab9352755f8c8d0f0187933a406755716a2c0dc9c77ec304fa5
+hmac: 686e0d0aca8ef481b2d7557369b61795e76b697659642e32349b690c660bcf91
 
 ...
