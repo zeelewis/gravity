@@ -228,6 +228,8 @@ steps:
       ANSIBLE_HOST_KEY_CHECKING: False
       WEB_ANSIBLE_SSH_KEY:
         from_secret: WEB_ANSIBLE_SSH_KEY
+      CLOUDFLARE_API_TOKEN_STAGING:
+        from_secret: CLOUDFLARE_API_TOKEN_STAGING
     commands:
       - apk add --no-cache make curl ansible
       - mkdir -m 0700 /root/.ssh && echo "$WEB_ANSIBLE_SSH_KEY" > /root/.ssh/id_ed25519 && chmod 600 /root/.ssh/id_ed25519
@@ -266,6 +268,6 @@ steps:
 
 ---
 kind: signature
-hmac: cc1cfc208add5b13e936f9b7b0f79dad4971f229ddf329108a23f526bc183414
+hmac: 7a6e122f98c8eab9352755f8c8d0f0187933a406755716a2c0dc9c77ec304fa5
 
 ...
