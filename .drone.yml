@@ -353,7 +353,57 @@ volumes:
   - name: dockersock
     temp: {}
 ---
+kind: pipeline
+type: kubernetes
+name: tag build
+
+# Tag builds verify OSS and Enterprise without running any tests.
+# Furthermore, they serve as the basis for promotion, since all releases need to
+# be promoted from another build.
+trigger:
+  event:
+  - tag
+
+steps:
+  - name: fetch tags
+    image: docker:git
+    commands:
+      - git fetch --tags
+  - name: wait for docker
+    image: docker
+    commands:
+      - timeout 15s /bin/sh -c 'while [ ! -S /var/run/docker.sock ]; do sleep 1; done'
+      - docker version
+    volumes:
+      - name: dockersock
+        path: /var/run
+  - name: build
+    image: docker:git
+    environment:
+      GITHUB_RO_KEY_PR:
+        from_secret: GITHUB_RO_KEY_PR
+      AWS_ACCESS_KEY_ID:
+        from_secret: AWS_S3_RO_ACCESS_KEY_ID
+      AWS_SECRET_ACCESS_KEY:
+        from_secret: AWS_S3_RO_SECRET_ACCESS_KEY
+    commands:
+      - apk add --no-cache make bash libc6-compat aws-cli
+      - mkdir -m 0700 /root/.ssh && echo "$GITHUB_RO_KEY_PR" > /root/.ssh/id_ed25519 && chmod 600 /root/.ssh/id_ed25519
+      - ssh-keyscan -H github.com > /root/.ssh/known_hosts 2>/dev/null && chmod 600 /root/.ssh/known_hosts
+      - make -C e production
+      - make production
+    volumes:
+      - name: dockersock
+        path: /var/run
+
+services:
+  - name: run docker daemon
+    image: docker:dind
+    privileged: true
+    volumes:
+      - name: dockersock
+---
 kind: signature
-hmac: 15f38b42dfd5d3a2d95ca3134862668d327d9810a85e98d58e6d79fc16eb362f
+hmac: 2d6f84018cb1d6ffd6d5724081353e55cb238e1c58cfc64c90d41da51d067589
 
 ...
