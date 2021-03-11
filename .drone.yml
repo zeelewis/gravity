@@ -403,7 +403,63 @@ services:
     volumes:
       - name: dockersock
 ---
+kind: pipeline
+type: kubernetes
+name: release
+
+trigger:
+  event:
+  - promote
+  target:
+  - release
+  - release-test
+
+clone:
+  disable: true
+
+steps:
+  - name: clone gravity
+    image: docker:git
+    commands:
+    - git clone $DRONE_REPO_LINK gravity
+    - cd gravity
+    - git checkout $DRONE_COMMIT
+  - name: clone ops
+    image: docker:git
+    environment:
+      OPS_REPO:
+        from_secret: OPS_REPO
+      GITHUB_OPS_DEPLOY_KEY:
+        from_secret: GITHUB_OPS_DEPLOY_KEY
+      OPS_REF: master
+    commands:
+    - mkdir -m 0700 /root/.ssh && echo "$GITHUB_OPS_DEPLOY_KEY" > /root/.ssh/id_ed25519 && chmod 600 /root/.ssh/id_ed25519
+    - ssh-keyscan -H github.com > /root/.ssh/known_hosts && chmod 600 /root/.ssh/known_hosts
+    - git clone $OPS_REPO ops
+    - cd ops
+    - git checkout $OPS_REF
+  - name: wait for docker
+    image: docker
+    commands:
+      - timeout 15s /bin/sh -c 'while [ ! -S /var/run/docker.sock ]; do sleep 1; done'
+      - docker version
+    volumes:
+      - name: dockersock
+        path: /var/run
+
+services:
+  - name: run docker daemon
+    image: docker:dind
+    privileged: true
+    volumes:
+      - name: dockersock
+        path: /var/run
+
+volumes:
+  - name: dockersock
+    temp: {}
+---
 kind: signature
-hmac: 54ee79e6083270a9e7934f6bc4ac061e0c36b2efdfe619eac6db84a5a4424b67
+hmac: 9c1f00bb1c2c84fd1538efa14be12dc3a2bf997fb65fc23a55bc636f5c90cd14
 
 ...
