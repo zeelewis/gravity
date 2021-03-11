@@ -29,7 +29,7 @@ hooks:
             containers:
             - name: hook
               image: quay.io/gravitational/debian-tall:buster
-              command: ["/usr/local/bin/kubectl", "--kubeconfig=/etc/kubernetes/scheduler.kubeconfig", "apply", "-f", "/var/lib/gravity/resources/resources.yaml"]
+              command: ["/bin/sh", "/var/lib/gravity/resources/setup-rbac.sh"]
               volumeMounts:
               - name: etc-kubernetes
                 mountPath: /etc/kubernetes
@@ -60,7 +60,7 @@ hooks:
             containers:
             - name: hook
               image: quay.io/gravitational/debian-tall:buster
-              command: ["/usr/local/bin/kubectl", "--kubeconfig=/etc/kubernetes/scheduler.kubeconfig", "apply", "-f", "/var/lib/gravity/resources/resources.yaml"]
+              command: ["/bin/sh", "/var/lib/gravity/resources/setup-rbac.sh"]
               volumeMounts:
               - name: etc-kubernetes
                 mountPath: /etc/kubernetes
