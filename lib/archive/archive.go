@@ -27,7 +27,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/gravitational/gravity/lib/defaults"
 
 	dockerarchive "github.com/docker/docker/pkg/archive"
@@ -190,9 +189,6 @@ func TarGlob(source *tar.Reader, dir string, patterns []string, handler func(mat
 		}
 		for _, pattern := range patterns {
 			relpath, err := filepath.Rel(dir, hdr.Name)
-			log.Warnf("RBAC Processing resources in relpath %v ", relpath)
-			spew.Dump("---RBAC---. Processing:")
-			spew.Dump(relpath)
 			if err == nil {
 				matched, _ := filepath.Match(pattern, filepath.Base(relpath))
 				if matched {

@@ -732,7 +732,7 @@ func (s *site) getPlanetNodeSecretsPackage(ctx *operationContext, node *Provisio
 
 	keyPairTypes := map[string]rbacConfig{
 		constants.APIServerKeyPair:         {},
-		constants.ETCDKeyPair:              {},
+		constants.ETCDKeyPair:              {userName: "flannel", group: constants.ClusterNodeGroup},
 		constants.KubectlKeyPair:           {group: constants.ClusterNodeGroup},
 		constants.ProxyKeyPair:             {userName: constants.ClusterKubeProxyUser, group: constants.ClusterNodeGroup},
 		constants.KubeletKeyPair:           {userName: constants.ClusterNodeNamePrefix + ":" + node.KubeNodeID(), group: constants.ClusterNodeGroup},

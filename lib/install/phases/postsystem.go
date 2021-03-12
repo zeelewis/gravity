@@ -32,6 +32,7 @@ import (
 	"github.com/gravitational/gravity/lib/status"
 	"github.com/gravitational/gravity/lib/utils"
 	"github.com/gravitational/satellite/agent/proto/agentpb"
+	"go.etcd.io/etcd/clientv3"
 
 	dockerarchive "github.com/docker/docker/pkg/archive"
 	"github.com/gravitational/trace"
@@ -239,7 +240,7 @@ type rbacExecutor struct {
 
 // Execute executes the rbac phase
 func (p *rbacExecutor) Execute(ctx context.Context) error {
-	p.Progress.NextStep("Creating Kubernetes RBAC resources")
+	p.Progress.NextStep("Creating Kubernetes and ETCD RBAC resources")
 	reader, err := p.Apps.GetAppResources(*p.Phase.Data.Package)
 	if err != nil {
 		return trace.Wrap(err)
@@ -263,6 +264,33 @@ func (p *rbacExecutor) Execute(ctx context.Context) error {
 		return trace.Wrap(err)
 	}
 	p.Info("Created Kubernetes RBAC resources.")
+
+	p.Info("Creating ETCD RBAC resources.")
+	etcdcli, err := clientv3.New(clientv3.Config{
+		Endpoints:   []string{"localhost:2379", "localhost:22379", "localhost:32379"},
+		DialTimeout: 5 * time.Second,
+	})
+	if err != nil {
+		return trace.Wrap(err)
+	}
+	defer etcdcli.Close()
+
+	if _, err = etcdcli.RoleAdd(ctx, "flannel_readwrite_role"); err != nil {
+		return trace.Wrap(err)
+	}
+	if _, err = etcdcli.UserAdd(ctx, "flannel", "pwd"); err != nil {
+		return trace.Wrap(err)
+	}
+
+	// TODO
+	// 		/usr/local/bin/etcdctl --cert-file /var/state/etcd.cert --key-file /var/state/etcd.key role grant flannel_readwrite_role --readwrite --path /coreos.com/network
+
+	if _, err = etcdcli.UserGrantRole(ctx, "flannel", "flannel_readwrite_role"); err != nil {
+		return trace.Wrap(err)
+	}
+
+	p.Info("Created ETCD RBAC resources.")
+
 	return nil
 }
 
