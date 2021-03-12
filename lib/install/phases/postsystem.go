@@ -291,11 +291,12 @@ func (p *rbacExecutor) Execute(ctx context.Context) error {
 	if _, err = etcdcli.UserGrantRole(ctx, "flannel", "flannel_readwrite_role"); err != nil {
 		return trace.Wrap(err)
 	}
-	/* TODO
-	if _, err = authpb.AuthEnable(ctx); err != nil {
+
+	// TODO
+	if _, err = etcdcli.AuthEnable(ctx); err != nil {
 		return trace.Wrap(err)
 	}
-	*/
+
 	p.Info("Created ETCD RBAC resources.")
 
 	return nil
