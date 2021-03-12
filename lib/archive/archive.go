@@ -27,6 +27,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/gravitational/gravity/lib/defaults"
 
 	dockerarchive "github.com/docker/docker/pkg/archive"
@@ -173,6 +174,8 @@ func HasFile(tarballPath, filename string) error {
 // for each file matching the list of specified patterns.
 // If the handler returns a special Abort error, iteration will be aborted without errors.
 func TarGlob(source *tar.Reader, dir string, patterns []string, handler func(match string, file io.Reader) error) (err error) {
+	log.Warnf("RBAC Processing resources in dir %v ", dir)
+
 	for {
 		var hdr *tar.Header
 		hdr, err = source.Next()
@@ -187,6 +190,9 @@ func TarGlob(source *tar.Reader, dir string, patterns []string, handler func(mat
 		}
 		for _, pattern := range patterns {
 			relpath, err := filepath.Rel(dir, hdr.Name)
+			log.Warnf("RBAC Processing resources in relpath %v ", relpath)
+			spew.Dump("---RBAC---. Processing:")
+			spew.Dump(relpath)
 			if err == nil {
 				matched, _ := filepath.Match(pattern, filepath.Base(relpath))
 				if matched {
