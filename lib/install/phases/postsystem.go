@@ -22,6 +22,7 @@ import (
 	"io"
 	"time"
 
+	"github.com/coreos/etcd/auth/authpb"
 	"github.com/gravitational/gravity/lib/app"
 	"github.com/gravitational/gravity/lib/app/resources"
 	"github.com/gravitational/gravity/lib/archive"
@@ -283,12 +284,18 @@ func (p *rbacExecutor) Execute(ctx context.Context) error {
 	}
 
 	// TODO
-	// 		/usr/local/bin/etcdctl --cert-file /var/state/etcd.cert --key-file /var/state/etcd.key role grant flannel_readwrite_role --readwrite --path /coreos.com/network
+	if _, err = etcdcli.RoleGrantPermission(ctx, "flannel_readwrite_role", "/coreos.com/network", "", clientv3.PermissionType(authpb.READWRITE)); err != nil {
+		return trace.Wrap(err)
+	}
 
 	if _, err = etcdcli.UserGrantRole(ctx, "flannel", "flannel_readwrite_role"); err != nil {
 		return trace.Wrap(err)
 	}
-
+	/* TODO
+	if _, err = authpb.AuthEnable(ctx); err != nil {
+		return trace.Wrap(err)
+	}
+	*/
 	p.Info("Created ETCD RBAC resources.")
 
 	return nil
