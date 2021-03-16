@@ -17,6 +17,7 @@ limitations under the License.
 package utils
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -144,7 +145,7 @@ func GetMasters(nodes map[string]v1.Node) (ips []string) {
 
 // GetNodes returns the map of kubernetes nodes keyed by advertise IPs
 func GetNodes(client corev1.NodeInterface) (nodes map[string]v1.Node, err error) {
-	nodeList, err := client.List(metav1.ListOptions{})
+	nodeList, err := client.List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return nil, rigging.ConvertError(err)
 	}
