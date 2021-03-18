@@ -412,14 +412,87 @@ volumes:
 ---
 kind: pipeline
 type: kubernetes
-name: release
+name: publish-dependencies
+
+trigger:
+  event:
+  - promote
+  target:
+  - publish-dependencies
+  - release
+
+steps:
+  - name: fetch tags
+    image: docker:git
+    commands:
+      - git fetch --tags
+  - name: wait for docker
+    image: docker
+    commands:
+      - timeout 15s /bin/sh -c 'while [ ! -S /var/run/docker.sock ]; do sleep 1; done'
+      - docker version
+    volumes:
+      - name: dockersock
+        path: /var/run
+  - name: build
+    image: docker:git
+    environment:
+      GITHUB_RO_KEY_PR:
+        from_secret: GITHUB_RO_KEY_PR
+      AWS_ACCESS_KEY_ID:
+        from_secret: AWS_S3_RO_ACCESS_KEY_ID
+      AWS_SECRET_ACCESS_KEY:
+        from_secret: AWS_S3_RO_SECRET_ACCESS_KEY
+    commands:
+      - apk add --no-cache make bash libc6-compat aws-cli fakeroot
+      - mkdir -m 0700 /root/.ssh && echo "$GITHUB_RO_KEY_PR" > /root/.ssh/id_ed25519 && chmod 600 /root/.ssh/id_ed25519
+      - ssh-keyscan -H github.com > /root/.ssh/known_hosts 2>/dev/null && chmod 600 /root/.ssh/known_hosts
+      - make -C e production
+    volumes:
+      - name: dockersock
+        path: /var/run
+  - name: publish
+    image: docker:git
+    environment:
+      TELE_COPY_TO_USER:
+        from_secret: QUAY_IO_SCAN_UPLOAD_USER
+      TELE_COPY_TO_PASS:
+        from_secret: QUAY_IO_SCAN_UPLOAD_TOKEN
+      AWS_ACCESS_KEY_ID:
+        from_secret: AWS_S3_RW_ACCESS_KEY_ID
+      AWS_SECRET_ACCESS_KEY:
+        from_secret: AWS_S3_RW_SECRET_ACCESS_KEY
+    commands:
+      - apk add --no-cache make bash libc6-compat aws-cli
+      - make -C e publish
+    volumes:
+      - name: dockersock
+        path: /var/run
+
+services:
+  - name: run docker daemon
+    image: docker:dind
+    privileged: true
+    volumes:
+      - name: dockersock
+        path: /var/run
+
+volumes:
+  - name: dockersock
+    temp: {}
+
+
+---
+kind: pipeline
+type: kubernetes
+name: publish-oss
 
 trigger:
   event:
   - promote
   target:
   - release
-  - release-test
+  - publish-oss
 
 clone:
   disable: true
@@ -430,6 +503,7 @@ steps:
     commands:
     - git clone $DRONE_REPO_LINK gravity
     - cd gravity
+    - git fetch --tags
     - git checkout $DRONE_COMMIT
   - name: clone ops
     image: docker:git
@@ -453,6 +527,39 @@ steps:
     volumes:
       - name: dockersock
         path: /var/run
+  - name: build
+    image: docker:git
+    environment:
+      GITHUB_RO_KEY_PR:
+        from_secret: GITHUB_RO_KEY_PR
+      AWS_ACCESS_KEY_ID:
+        from_secret: AWS_S3_RO_ACCESS_KEY_ID
+      AWS_SECRET_ACCESS_KEY:
+        from_secret: AWS_S3_RO_SECRET_ACCESS_KEY
+    commands:
+      - apk add --no-cache make bash libc6-compat aws-cli fakeroot
+      - mkdir -m 0700 /root/.ssh && echo "$GITHUB_RO_KEY_PR" > /root/.ssh/id_ed25519 && chmod 600 /root/.ssh/id_ed25519
+      - ssh-keyscan -H github.com > /root/.ssh/known_hosts 2>/dev/null && chmod 600 /root/.ssh/known_hosts
+      - cd gravity
+      - make production telekube build-tsh release hub-vars
+    volumes:
+      - name: dockersock
+        path: /var/run
+  - name: publish
+    image: docker:git
+    environment:
+      AWS_ACCESS_KEY_ID:
+        from_secret: AWS_S3_RW_ACCESS_KEY_ID
+      AWS_SECRET_ACCESS_KEY:
+        from_secret: AWS_S3_RW_SECRET_ACCESS_KEY
+    commands:
+      - apk add --no-cache make bash libc6-compat aws-cli ansible
+      - WORKSPACE=/drone/src
+      - cd ops/hub
+      - make bucket sync
+    volumes:
+      - name: dockersock
+        path: /var/run
 
 services:
   - name: run docker daemon
@@ -467,6 +574,6 @@ volumes:
     temp: {}
 ---
 kind: signature
-hmac: 428775ebb2308e73a1d779db05d4b752e374b5e69ba87c715b824b30ec1a230d
+hmac: 57f4d809352d19e87727f22577abd5ba702ef5159e272775008a61615f15780a
 
 ...
