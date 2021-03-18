@@ -17,14 +17,14 @@ limitations under the License.
 package helm
 
 import (
-	"path/filepath"
+	"bytes"
+	"fmt"
 	"strings"
 
-	"helm.sh/helm/v3/pkg/chart/loader"
+	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/cli/values"
-	"helm.sh/helm/v3/pkg/engine"
-	"helm.sh/helm/v3/pkg/getter"
+	"helm.sh/helm/v3/pkg/releaseutil"
 
 	"github.com/gravitational/trace"
 )
@@ -41,36 +41,31 @@ type RenderParameters struct {
 
 // Render renders templates of a provided Helm chart.
 func Render(params RenderParameters) (map[string]string, error) {
-	chartRequested, err := loader.Load(params.Path)
+	settings := cli.New()
+	// TODO: namespace?
+	actionConfig, err := helmInit(settings, "")
 	if err != nil {
 		return nil, trace.Wrap(err)
 	}
+
+	client := action.NewInstall(actionConfig)
+	client.Timeout = helmTimeout
+	client.DryRun = true // Skip the name check
+	client.ReleaseName = "RELEASE-NAME"
+	client.Replace = true
+	client.ClientOnly = true
 
 	valueOpts := &values.Options{
 		ValueFiles: params.Values,
 		Values:     params.Set,
 	}
 
-	vals, err := valueOpts.MergeValues(getter.All(cli.New()))
+	rel, err := runInstall(settings, client, params.Path, valueOpts)
 	if err != nil {
 		return nil, trace.Wrap(err)
 	}
 
-	renderedTemplates, err := engine.Render(chartRequested, vals)
-	if err != nil {
-		return nil, trace.Wrap(err)
-	}
-
-	result := make(map[string]string)
-	for k, v := range renderedTemplates {
-		filename := filepath.Base(k)
-		// Render only Kubernetes resources skipping internal Helm
-		// files and files that begin with underscore which are not
-		// expected to output a Kubernetes spec.
-		if filename == "NOTES.txt" || strings.HasPrefix(filename, "_") {
-			continue
-		}
-		result[k] = v
-	}
-	return result, nil
+	var manifests bytes.Buffer
+	fmt.Fprintln(&manifests, strings.TrimSpace(rel.Manifest))
+	return releaseutil.SplitManifests(manifests.String()), nil
 }

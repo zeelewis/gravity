@@ -32,6 +32,7 @@ import (
 	"helm.sh/helm/v3/pkg/cli/values"
 	"helm.sh/helm/v3/pkg/downloader"
 	"helm.sh/helm/v3/pkg/getter"
+	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/releaseutil"
 )
 
@@ -80,7 +81,26 @@ func Install(params InstallParameters) (storage.Release, error) {
 	client.Namespace = params.Namespace
 	client.ReleaseName = params.Release
 
-	chartPath, err := client.ChartPathOptions.LocateChart(params.Path, settings)
+	valueOpts := &values.Options{
+		ValueFiles: params.Values,
+		Values:     params.Set,
+	}
+
+	result, err := runInstall(settings, client, params.Path, valueOpts)
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+
+	rel, err := storage.NewRelease(result)
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+
+	return rel, nil
+}
+
+func runInstall(settings *cli.EnvSettings, client *action.Install, path string, valueOpts *values.Options) (*release.Release, error) {
+	chartPath, err := client.ChartPathOptions.LocateChart(path, settings)
 	if err != nil {
 		return nil, trace.Wrap(err)
 	}
@@ -88,11 +108,6 @@ func Install(params InstallParameters) (storage.Release, error) {
 	logrus.Debugf("CHART PATH: %s\n", chartPath)
 
 	providers := getter.All(settings)
-
-	valueOpts := &values.Options{
-		ValueFiles: params.Values,
-		Values:     params.Set,
-	}
 
 	vals, err := valueOpts.MergeValues(providers)
 	if err != nil {
@@ -144,12 +159,7 @@ func Install(params InstallParameters) (storage.Release, error) {
 		return nil, trace.Wrap(err)
 	}
 
-	rel, err := storage.NewRelease(result)
-	if err != nil {
-		return nil, trace.Wrap(err)
-	}
-
-	return rel, nil
+	return result, nil
 }
 
 // checkIfInstallable validates if a chart can be installed

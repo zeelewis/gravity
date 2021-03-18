@@ -45,13 +45,27 @@ func Chart(locator loc.Locator) *chart.Chart {
 	return &chart.Chart{
 		Raw: []*chart.File{
 			{
+				Name: "Chart.yaml",
+				Data: []byte(fmt.Sprintf(chartYAML, locator.Name, locator.Version)),
+			},
+			{
 				Name: "values.yaml",
 				Data: []byte(valuesYAML),
 			},
+			{
+				Name: "app.yaml",
+				Data: []byte(fmt.Sprintf(appYAML, locator.Name, locator.Version)),
+			},
 		},
 		Metadata: &chart.Metadata{
-			Name:    locator.Name,
-			Version: locator.Version,
+			Name:       locator.Name,
+			Version:    locator.Version,
+			APIVersion: "v1",
+		},
+		Values: map[string]interface{}{
+			"image": map[string]interface{}{
+				"registry": "localhost:5000",
+			},
 		},
 		Files: []*chart.File{
 			{
@@ -63,8 +77,10 @@ func Chart(locator loc.Locator) *chart.Chart {
 }
 
 var (
-	chartYAML = `name: %v
-version: %v`
+	chartYAML = `apiVersion: v1
+name: %v
+version: %v
+`
 	valuesYAML = `image:
   registry:
     localhost:5000`

@@ -187,7 +187,7 @@ func (p *prometheus) GetMaxMemoryRate(ctx context.Context, interval time.Duratio
 //
 // https://prometheus.io/docs/prometheus/latest/querying/basics/#instant-vector-selectors
 func (p *prometheus) getVector(ctx context.Context, query string) (model.Vector, error) {
-	value, _, err := p.Query(ctx, query, time.Time{})
+	value, err := p.Query(ctx, query, time.Time{})
 	if err != nil {
 		return nil, trace.Wrap(err)
 	}
@@ -218,7 +218,7 @@ func (p *prometheus) getVectorValue(ctx context.Context, query string) (model.Sa
 //
 // https://prometheus.io/docs/prometheus/latest/querying/basics/#range-vector-selectors
 func (p *prometheus) getMatrix(ctx context.Context, query string, timeRange v1.Range) (model.Matrix, error) {
-	value, _, err := p.QueryRange(ctx, query, timeRange)
+	value, err := p.QueryRange(ctx, query, timeRange)
 	if err != nil {
 		return nil, trace.Wrap(err)
 	}
