@@ -38,9 +38,9 @@ require (
 	github.com/gizak/termui v2.3.0+incompatible
 	github.com/go-ini/ini v1.30.0 // indirect
 	github.com/go-openapi/runtime v0.19.15
+	github.com/gofrs/flock v0.8.0
 	github.com/gogo/protobuf v1.3.2
 	github.com/gokyle/hotp v0.0.0-20160218004637-c180d57d286b
-	github.com/golang/protobuf v1.4.2
 	github.com/google/certificate-transparency-go v0.0.0-00010101000000-000000000000 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 	github.com/gorilla/handlers v0.0.0-20151124211609-e96366d97736 // indirect
@@ -80,6 +80,7 @@ require (
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/selinux v1.5.2
 	github.com/pborman/uuid v1.2.0
+	github.com/pkg/errors v0.9.1
 	github.com/pquerna/otp v0.0.0-20160912161815-54653902c20e // indirect
 	github.com/prometheus/alertmanager v0.20.0
 	github.com/prometheus/client_golang v1.7.1
@@ -112,6 +113,7 @@ require (
 	k8s.io/kubernetes v1.19.8
 	launchpad.net/gocheck v0.0.0-20140225173054-000000000087 // indirect
 	rsc.io/letsencrypt v0.0.3 // indirect
+	sigs.k8s.io/yaml v1.2.0
 )
 
 replace (

@@ -386,6 +386,8 @@ github.com/gobwas/glob/util/runes
 github.com/gobwas/glob/util/strings
 # github.com/godbus/dbus/v5 v5.0.3
 github.com/godbus/dbus/v5
+# github.com/gofrs/flock v0.8.0
+github.com/gofrs/flock
 # github.com/gogo/protobuf v1.3.2
 github.com/gogo/protobuf/gogoproto
 github.com/gogo/protobuf/proto

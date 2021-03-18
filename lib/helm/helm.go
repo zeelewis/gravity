@@ -20,12 +20,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	helmutils "github.com/gravitational/gravity/lib/utils/helm"
-
-	"k8s.io/helm/pkg/chartutil"
-	"k8s.io/helm/pkg/proto/hapi/chart"
-	"k8s.io/helm/pkg/renderutil"
-	"k8s.io/helm/pkg/timeconv"
+	"helm.sh/helm/v3/pkg/chart/loader"
+	"helm.sh/helm/v3/pkg/cli"
+	"helm.sh/helm/v3/pkg/cli/values"
+	"helm.sh/helm/v3/pkg/engine"
+	"helm.sh/helm/v3/pkg/getter"
 
 	"github.com/gravitational/trace"
 )
@@ -40,29 +39,28 @@ type RenderParameters struct {
 	Set []string
 }
 
-// RenderHelm renders templates of a provided Helm chart.
-func Render(p RenderParameters) (map[string]string, error) {
-	rawVals, err := helmutils.Vals(p.Values, p.Set, nil, nil, "", "", "")
+// Render renders templates of a provided Helm chart.
+func Render(params RenderParameters) (map[string]string, error) {
+	chartRequested, err := loader.Load(params.Path)
 	if err != nil {
 		return nil, trace.Wrap(err)
 	}
-	config := &chart.Config{
-		Raw:    string(rawVals),
-		Values: map[string]*chart.Value{},
+
+	valueOpts := &values.Options{
+		ValueFiles: params.Values,
+		Values:     params.Set,
 	}
-	ch, err := chartutil.Load(p.Path)
+
+	vals, err := valueOpts.MergeValues(getter.All(cli.New()))
 	if err != nil {
 		return nil, trace.Wrap(err)
 	}
-	options := renderutil.Options{
-		ReleaseOptions: chartutil.ReleaseOptions{
-			Time: timeconv.Now(),
-		},
-	}
-	renderedTemplates, err := renderutil.Render(ch, config, options)
+
+	renderedTemplates, err := engine.Render(chartRequested, vals)
 	if err != nil {
 		return nil, trace.Wrap(err)
 	}
+
 	result := make(map[string]string)
 	for k, v := range renderedTemplates {
 		filename := filepath.Base(k)

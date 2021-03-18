@@ -23,9 +23,8 @@ import (
 	"github.com/gravitational/gravity/lib/archive"
 	"github.com/gravitational/gravity/lib/loc"
 
-	"github.com/golang/protobuf/ptypes/any"
 	check "gopkg.in/check.v1"
-	"k8s.io/helm/pkg/proto/hapi/chart"
+	"helm.sh/helm/v3/pkg/chart"
 )
 
 // CreateHelmChartApp creates a new test Helm chart application with the
@@ -44,18 +43,20 @@ func CreateHelmChartApp(c *check.C, apps app.Applications, locator loc.Locator) 
 // Chart returns chart object corresponding to the test chart defined below.
 func Chart(locator loc.Locator) *chart.Chart {
 	return &chart.Chart{
+		Raw: []*chart.File{
+			{
+				Name: "values.yaml",
+				Data: []byte(valuesYAML),
+			},
+		},
 		Metadata: &chart.Metadata{
 			Name:    locator.Name,
 			Version: locator.Version,
 		},
-		Values: &chart.Config{
-			Raw: valuesYAML,
-		},
-		Files: []*any.Any{
+		Files: []*chart.File{
 			{
-				TypeUrl: "app.yaml",
-				Value: []byte(fmt.Sprintf(appYAML,
-					locator.Name, locator.Version)),
+				Name: "app.yaml",
+				Data: []byte(fmt.Sprintf(appYAML, locator.Name, locator.Version)),
 			},
 		},
 	}

@@ -59,9 +59,9 @@ func (s *ReleasesSuite) SetUpSuite(c *check.C) {
 
 func (s *ReleasesSuite) TestListReleases(c *check.C) {
 	// Prepare a couple of releases.
-	release1, err := s.services.HelmClient.Install(helm.InstallParameters{Name: "release1"})
+	release1, err := helm.Install(helm.InstallParameters{Release: "release1"})
 	c.Assert(err, check.IsNil)
-	release2, err := s.services.HelmClient.Install(helm.InstallParameters{Name: "release2"})
+	release2, err := helm.Install(helm.InstallParameters{Release: "release2"})
 	c.Assert(err, check.IsNil)
 
 	// Make sure they're returned.
