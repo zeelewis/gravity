@@ -111,12 +111,12 @@ require (
 	k8s.io/kubectl v0.19.8
 	k8s.io/kubernetes v1.19.8
 	launchpad.net/gocheck v0.0.0-20140225173054-000000000087 // indirect
+	rsc.io/letsencrypt v0.0.3 // indirect
 )
 
 replace (
 	cloud.google.com/go => cloud.google.com/go v0.21.0
 	github.com/Azure/go-autorest => github.com/Azure/go-autorest v13.0.1-0.20190815170712-85d9c035382e+incompatible
-	github.com/Microsoft/go-winio => github.com/Microsoft/go-winio v0.4.9
 	github.com/PuerkitoBio/purell => github.com/PuerkitoBio/purell v1.1.0
 	github.com/alecthomas/template => github.com/alecthomas/template v0.0.0-20150530000104-b867cc6ab45c
 	github.com/apparentlymart/go-textseg => github.com/apparentlymart/go-textseg v1.0.0
