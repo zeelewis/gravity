@@ -53,7 +53,7 @@ require (
 	github.com/gravitational/oxy v0.0.0-20180629203109-e4a7e35311e6 // indirect
 	github.com/gravitational/rigging v0.0.0-20210315200250-d036093ec3e6
 	github.com/gravitational/roundtrip v1.0.0
-	github.com/gravitational/satellite v0.0.9-0.20201119182158-fe29d7b2c010
+	github.com/gravitational/satellite v0.0.9-0.20210313001929-72cbba4dc99c
 	github.com/gravitational/tail v1.0.1
 	github.com/gravitational/teleport v3.2.17+incompatible
 	github.com/gravitational/trace v1.1.14
@@ -147,12 +147,6 @@ replace (
 	github.com/google/uuid => github.com/google/uuid v1.1.0
 	github.com/gophercloud/gophercloud => github.com/gophercloud/gophercloud v0.0.0-20181207171349-d3bcea3cf97e
 	github.com/gorilla/mux => github.com/gorilla/mux v1.7.0
-	github.com/hashicorp/go-cleanhttp => github.com/hashicorp/go-cleanhttp v0.5.0
-	github.com/hashicorp/go-uuid => github.com/hashicorp/go-uuid v1.0.0
-	github.com/hashicorp/go-version => github.com/hashicorp/go-version v1.0.0
-	github.com/hashicorp/golang-lru => github.com/hashicorp/golang-lru v0.5.0
-	github.com/hashicorp/hcl => github.com/hashicorp/hcl v1.0.0
-	github.com/hashicorp/memberlist => github.com/hashicorp/memberlist v0.1.4
 	github.com/imdario/mergo => github.com/imdario/mergo v0.0.0-20160517064435-50d4dbd4eb0e
 	github.com/json-iterator/go => github.com/json-iterator/go v1.1.5
 	github.com/julienschmidt/httprouter => github.com/julienschmidt/httprouter v1.1.0
@@ -166,6 +160,7 @@ replace (
 	github.com/modern-go/reflect2 => github.com/modern-go/reflect2 v0.0.0-20180701023420-4b7aa43c6742
 	github.com/olekukonko/tablewriter => github.com/olekukonko/tablewriter v0.0.0-20160923125401-bdcc175572fd
 	github.com/pborman/uuid => github.com/pborman/uuid v0.0.0-20170612153648-e790cca94e6c
+	github.com/prometheus/client_golang => github.com/prometheus/client_golang v0.9.2
 	github.com/russross/blackfriday => github.com/russross/blackfriday v0.0.0-20151117072312-300106c228d5
 	github.com/satori/go.uuid => github.com/satori/go.uuid v1.1.1-0.20170321230731-5bf94b69c6b6
 	github.com/sirupsen/logrus => github.com/gravitational/logrus v1.4.3
@@ -179,6 +174,7 @@ replace (
 	golang.org/x/time => golang.org/x/time v0.0.0-20180412165947-fbb02b2291d2
 	google.golang.org/appengine => google.golang.org/appengine v1.2.0
 	google.golang.org/genproto => google.golang.org/genproto v0.0.0-20170818010345-ee236bd376b0
+	google.golang.org/grpc => google.golang.org/grpc v1.23.1
 	gopkg.in/alecthomas/kingpin.v2 => github.com/gravitational/kingpin v2.1.11-0.20180808090833-85085db9f49b+incompatible
 	gopkg.in/inf.v0 => gopkg.in/inf.v0 v0.9.0
 	gopkg.in/yaml.v2 => gopkg.in/yaml.v2 v2.2.2
