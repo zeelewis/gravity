@@ -126,7 +126,7 @@ func (o *repoRemoveOptions) repoRemove() error {
 		if err := removeRepoCache(o.repoCache, name); err != nil {
 			return trace.Wrap(err)
 		}
-		log.Info("%q has been removed from your repositories\n", name)
+		log.Infof("%q has been removed from your repositories\n", name)
 	}
 
 	return nil
@@ -136,7 +136,7 @@ func removeRepoCache(root, name string) error {
 	chartsFile := filepath.Join(root, helmpath.CacheChartsFile(name))
 	if _, err := os.Stat(chartsFile); err == nil {
 		if err := os.Remove(chartsFile); err != nil {
-			log.Debug("Failed to remove %s", chartsFile)
+			log.Debugf("Failed to remove %s", chartsFile)
 		}
 	}
 

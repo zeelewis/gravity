@@ -480,7 +480,7 @@ func loginHelm(opsCenterURL string, login users.LoginEntry) error {
 		return trace.Wrap(err)
 	}
 
-	log.Info("%q has been added to your repositories\n", hostname)
+	log.Infof("%q has been added to your repositories\n", hostname)
 	return nil
 }
 
@@ -583,7 +583,7 @@ func logoutRegistry(entries []users.LoginEntry) error {
 	_, err := exec.LookPath("docker")
 	if err != nil {
 		if isExecutableNotFoundError(err) {
-			log.Infof("Docker executable not found, skip registry logout.")
+			log.Info("Docker executable not found, skip registry logout.")
 			return nil
 		}
 		return trace.ConvertSystemError(err)
